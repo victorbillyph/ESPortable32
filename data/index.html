@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ESPortable32</title>
+<link rel="stylesheet" href="/css/desktop.css">
+</head>
+<body>
+<div id="taskbar">
+<div id="taskbar-left">
+<button id="menuBtn" onclick="toggleMenu()">☰</button>
+<span id="clock"></span>
+</div>
+<div id="taskbar-center"></div>
+<div id="taskbar-right">
+<span id="statusIcons"></span>
+</div>
+</div>
+<div id="menuOverlay" onclick="toggleMenu()"></div>
+<div id="startMenu">
+<div id="appList"></div>
+</div>
+<div id="desktop">
+<div id="windowContainer"></div>
+</div>
+<div id="lockScreen">
+<div class="lock-container">
+<h1>ESPortable32</h1>
+<p>Digite o PIN para desbloquear</p>
+<input type="password" id="lockPin" placeholder="PIN" maxlength="6" inputmode="numeric">
+<button onclick="unlock()">Desbloquear</button>
+<p id="lockError" class="error"></p>
+</div>
+</div>
+<script src="/js/lib/vanilla.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/websocket.js"></script>
+<script src="/js/apps.js"></script>
+<script src="/js/sdk.js"></script>
+<script src="/js/desktop.js"></script>
+</body>
+</html>

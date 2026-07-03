@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loja</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:sans-serif;background:#1a1a2e;color:#eee;padding:1rem}
+h1{color:#e94560;font-size:1.3rem;margin-bottom:1rem}
+#search{width:100%;padding:.6rem;border:1px solid #333;border-radius:6px;background:#0f3460;color:#fff;font-size:.9rem;margin-bottom:1rem}
+#search::placeholder{color:#888}
+.app{background:#16213e;border-radius:8px;padding:.8rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.8rem}
+.app-icon{font-size:2rem;width:2.5rem;text-align:center}
+.app-info{flex:1}
+.app-name{font-weight:700;font-size:.95rem}
+.app-desc{color:#aaa;font-size:.8rem;margin-top:.2rem}
+button{background:#e94560;color:#fff;border:none;border-radius:6px;padding:.5rem 1rem;font-size:.8rem;cursor:pointer;white-space:nowrap}
+button:hover{background:#c73650}
+button.installed{background:#2a5a2a;cursor:default}
+#status{text-align:center;color:#888;font-size:.8rem;margin-top:1rem}
+</style>
+</head>
+<body>
+<h1>🛒 Loja de Apps</h1>
+<input type="text" id="search" placeholder="Buscar apps...">
+<div id="list"></div>
+<div id="status"></div>
+<script>
+(function(){
+  var SDK = window.ESPortableSDK;
+  if (SDK) SDK.setTitle('Loja');
+
+  var APPS = [
+    { id:'editor', name:'Editor de Texto', icon:'✏️', desc:'Editor de texto simples com suporte a salvar e carregar arquivos.' },
+    { id:'proxy',  name:'Proxy HTTP',      icon:'🌐', desc:'Faça requisições HTTP diretamente do dispositivo.' },
+    { id:'monitor',name:'Monitor',          icon:'📊', desc:'Monitore sensores e status em tempo real do sistema.' }
+  ];
+
+  var installed = {};
+  function loadInstalled() {
+    if (SDK) {
+      SDK.api.get('/api/apps').then(function(data){
+        if (data && data.apps) {
+          data.apps.forEach(function(a){ installed[a.id]=true; });
+          render();
+        }
+      }).catch(function(){});
+    }
+  }
+
+  function render(){
+    var q = (document.getElementById('search').value||'').toLowerCase();
+    var list = document.getElementById('list');
+    list.innerHTML = '';
+    APPS.filter(function(a){ return a.name.toLowerCase().includes(q) || a.desc.toLowerCase().includes(q); })
+    .forEach(function(a){
+      var div = document.createElement('div');
+      div.className = 'app';
+      var installed_ = installed[a.id];
+      div.innerHTML =
+        '<div class="app-icon">'+a.icon+'</div>'+
+        '<div class="app-info"><div class="app-name">'+a.name+'</div><div class="app-desc">'+a.desc+'</div></div>'+
+        '<button'+(installed_?' class="installed"':'')+' data-id="'+a.id+'">'+(installed_?'✔ Instalado':'Instalar')+'</button>';
+      if (!installed_) {
+        div.querySelector('button').addEventListener('click',function(e){
+          var id = e.target.getAttribute('data-id');
+          alert('App "'+APPS.find(function(x){return x.id===id;}).name+'" instalado com sucesso!');
+          installed[id]=true;
+          render();
+        });
+      }
+      list.appendChild(div);
+    });
+    if (!list.children.length) document.getElementById('status').textContent = 'Nenhum app encontrado.';
+    else document.getElementById('status').textContent = '';
+  }
+
+  document.getElementById('search').addEventListener('input', render);
+  (SDK ? SDK.onReady : function(cb){cb()})(function(){
+    loadInstalled();
+    render();
+  });
+})();
+</script>
+</body>
+</html>

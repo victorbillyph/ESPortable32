@@ -1,0 +1,51 @@
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;color:#fff}
+#taskbar{position:fixed;bottom:0;left:0;right:0;height:40px;background:rgba(22,33,62,.95);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:1000;border-top:1px solid rgba(255,255,255,.1)}
+#taskbar-left{display:flex;align-items:center;gap:12px}
+#menuBtn{background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:4px}
+#menuBtn:hover{background:rgba(255,255,255,.1)}
+#clock{font-size:.8rem;color:#aaa}
+#taskbar-center{display:flex;align-items:center;gap:4px}
+.taskbar-app{background:none;border:none;color:#aaa;font-size:.75rem;padding:4px 8px;border-radius:4px;cursor:pointer;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.taskbar-app.active{background:rgba(233,69,96,.3);color:#fff}
+.taskbar-app:hover{background:rgba(255,255,255,.1)}
+#taskbar-right{display:flex;align-items:center;gap:8px}
+#statusIcons{font-size:.8rem;color:#aaa}
+#desktop{position:fixed;top:0;left:0;right:0;bottom:40px;overflow:hidden}
+#windowContainer{position:relative;width:100%;height:100%}
+.window{position:absolute;background:#16213e;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;min-width:300px;min-height:200px;border:1px solid rgba(255,255,255,.1)}
+.window.minimized{display:none}
+.window.maximized{top:0!important;left:0!important;width:100%!important;height:100%!important;border-radius:0}
+.window-header{display:flex;align-items:center;padding:8px 12px;background:rgba(15,52,96,.8);border-radius:8px 8px 0 0;cursor:move;user-select:none}
+.window-header.dragging{cursor:grabbing}
+.window-title{flex:1;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.window-controls{display:flex;gap:6px}
+.window-controls button{background:none;border:none;color:#aaa;cursor:pointer;font-size:.8rem;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center}
+.window-controls button:hover{background:rgba(255,255,255,.1);color:#fff}
+.window-controls .close:hover{background:#e94560;color:#fff}
+.window-content{flex:1;overflow:auto;padding:0;position:relative}
+.window-content iframe{width:100%;height:100%;border:none;background:#fff}
+.window-statusbar{display:flex;align-items:center;padding:4px 12px;background:rgba(15,52,96,.5);border-radius:0 0 8px 8px;font-size:.75rem;color:#666;gap:8px}
+#lockScreen{position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1a2e;z-index:9999;display:flex;justify-content:center;align-items:center}
+.lock-container{text-align:center;padding:2rem}
+.lock-container h1{color:#e94560;margin-bottom:1rem}
+.lock-container p{color:#aaa;margin-bottom:1rem}
+.lock-container input{width:200px;padding:.6rem;border:1px solid #333;border-radius:6px;background:#0f3460;color:#fff;font-size:1.5rem;text-align:center;letter-spacing:8px}
+.lock-container button{margin-top:1rem;padding:.6rem 2rem;background:#e94560;color:#fff;border:none;border-radius:6px;font-size:1rem;cursor:pointer}
+.lock-container button:hover{background:#c73650}
+.error{color:#e94560;font-size:.9rem;margin-top:.5rem}
+#startMenu{position:fixed;bottom:40px;left:0;width:280px;background:rgba(22,33,62,.98);backdrop-filter:blur(10px);border-radius:0 8px 0 0;box-shadow:4px -4px 20px rgba(0,0,0,.4);z-index:999;display:none;max-height:60vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,.1);border-right:1px solid rgba(255,255,255,.1)}
+#startMenu.open{display:block}
+#menuOverlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:998;display:none}
+#menuOverlay.open{display:block}
+#appList{padding:8px}
+.app-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-radius:6px;transition:background .15s}
+.app-item:hover{background:rgba(233,69,96,.15)}
+.app-item .icon{width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,#e94560,#0f3460);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.app-item .name{font-size:.85rem}
+.app-item .desc{font-size:.75rem;color:#666}
+.desktop-icon{display:flex;flex-direction:column;align-items:center;width:80px;padding:8px;cursor:pointer;border-radius:8px;transition:background .15s}
+.desktop-icon:hover{background:rgba(255,255,255,.1)}
+.desktop-icon .icon{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#e94560,#0f3460);display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:4px}
+.desktop-icon .label{font-size:.7rem;text-align:center;color:#ccc;word-wrap:break-word;max-width:100%}
+@media(max-width:600px){.window{top:0!important;left:0!important;width:100%!important;height:100%!important;border-radius:0}}

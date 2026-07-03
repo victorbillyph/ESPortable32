@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editor de Texto</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:sans-serif;background:#1a1a2e;color:#eee;padding:1rem;display:flex;flex-direction:column;height:100vh}
+.titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.titlebar h1{color:#e94560;font-size:1.1rem}
+.titlebar .file-info{color:#888;font-size:.8rem}
+textarea{flex:1;width:100%;background:#0f3460;color:#ddd;border:1px solid #333;border-radius:6px;padding:.8rem;font-family:monospace;font-size:.9rem;resize:none}
+textarea:focus{outline:none;border-color:#e94560}
+.toolbar{display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap}
+.toolbar input{flex:1;min-width:120px;padding:.5rem;border:1px solid #333;border-radius:6px;background:#0f3460;color:#fff;font-size:.85rem}
+.toolbar input::placeholder{color:#888}
+.btn{background:#e94560;color:#fff;border:none;border-radius:6px;padding:.5rem 1rem;font-size:.85rem;cursor:pointer}
+.btn:hover{background:#c73650}
+.btn.secondary{background:#16213e;border:1px solid #333}
+.btn.secondary:hover{background:#1f2f52}
+#status{color:#888;font-size:.8rem;margin-top:.5rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="titlebar">
+<h1>✏️ Editor de Texto</h1>
+<span class="file-info" id="fileInfo">Nenhum arquivo aberto</span>
+</div>
+<textarea id="editor" placeholder="Digite seu texto aqui..."></textarea>
+<div class="toolbar">
+<input type="text" id="filename" placeholder="nome-do-arquivo.txt" value="texto.txt">
+<button class="btn" id="saveBtn">💾 Salvar</button>
+<button class="btn secondary" id="loadBtn">📂 Carregar</button>
+</div>
+<div id="status"></div>
+<script>
+(function(){
+  var SDK = window.ESPortableSDK;
+  if (SDK) SDK.setTitle('Editor de Texto');
+  var currentFile = null;
+
+  function setStatus(msg, err){
+    var el = document.getElementById('status');
+    el.textContent = msg;
+    el.style.color = err ? '#e94560' : '#888';
+  }
+
+  function save(){
+    var content = document.getElementById('editor').value;
+    var name = document.getElementById('filename').value.trim() || 'texto.txt';
+    if (SDK) {
+      SDK.api.post('/api/fs/write', {path:name, content:content}).then(function(){
+        setStatus('✔ Salvo como '+name);
+        currentFile = name;
+        document.getElementById('fileInfo').textContent = name;
+      }).catch(function(e){ setStatus('Erro ao salvar: '+e.message, true); });
+    } else {
+      fetch('/api/fs/write', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:name, content:content})})
+      .then(function(r){ return r.json(); })
+      .then(function(){ setStatus('✔ Salvo como '+name); currentFile = name; document.getElementById('fileInfo').textContent = name; })
+      .catch(function(e){ setStatus('Erro ao salvar: '+e.message, true); });
+    }
+  }
+
+  function load(){
+    var name = document.getElementById('filename').value.trim() || 'texto.txt';
+    if (SDK) {
+      SDK.api.get('/api/fs/read?path='+encodeURIComponent(name)).then(function(data){
+        document.getElementById('editor').value = data.content || '';
+        currentFile = name;
+        document.getElementById('fileInfo').textContent = name;
+        setStatus('✔ Carregado');
+      }).catch(function(e){ setStatus('Erro ao carregar: '+e.message, true); });
+    } else {
+      fetch('/api/fs/read?path='+encodeURIComponent(name))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        document.getElementById('editor').value = data.content || '';
+        currentFile = name;
+        document.getElementById('fileInfo').textContent = name;
+        setStatus('✔ Carregado');
+      })
+      .catch(function(e){ setStatus('Erro ao carregar: '+e.message, true); });
+    }
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', save);
+  document.getElementById('loadBtn').addEventListener('click', load);
+
+  (SDK ? SDK.onReady : function(cb){cb()})(function(){});
+})();
+</script>
+</body>
+</html>

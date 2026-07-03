@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESPortable32 - Setup</title>
+<link rel="stylesheet" href="/css/setup.css">
+</head>
+<body>
+<div class="container">
+<div class="card">
+<h1>ESPortable32</h1>
+<p class="subtitle">Configuração inicial</p>
+<div class="form-group">
+<label>Rede WiFi</label>
+<div id="ssidList" class="ssid-list"></div>
+<input type="text" id="ssid" placeholder="SSID da rede WiFi">
+</div>
+<div class="form-group">
+<label>Senha</label>
+<input type="password" id="password" placeholder="Senha da rede WiFi">
+</div>
+<div class="form-group">
+<label>PIN de bloqueio</label>
+<input type="password" id="pin" placeholder="PIN (4-6 dígitos, opcional)">
+</div>
+<button onclick="save()">Salvar e Conectar</button>
+<p id="status" class="status"></p>
+</div>
+</div>
+<script>
+fetch('/api/status').then(r=>r.json()).then(d=>{
+if(d.ssid) document.getElementById('ssid').value=d.ssid;
+}).catch(()=>{});
+function save(){
+const ssid=document.getElementById('ssid').value;
+const pass=document.getElementById('password').value;
+const pin=document.getElementById('pin').value;
+if(!ssid){alert('Informe o SSID');return}
+const st=document.getElementById('status');
+st.textContent='Salvando configuração...';
+st.className='status';
+fetch('/api/setup',{method:'POST',
+headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass)+'&pin='+encodeURIComponent(pin)
+}).then(r=>r.text()).then(t=>{
+st.textContent=t;
+st.className=t.includes('OK')?'status ok':'status error';
+if(t.includes('OK'))setTimeout(()=>window.location.href='/',5000);
+}).catch(e=>{
+st.textContent='Erro: '+e.message;
+st.className='status error';
+});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+.pio/
+.pioenvs/
+.piolibdeps/
+build/
+__pycache__/
+*.pyc
+*.swp
+*.swo
