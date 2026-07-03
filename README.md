@@ -10,6 +10,22 @@ Um firmware completo para ESP32 que transforma o microcontrolador em um servidor
 
 ---
 
+## ⚡ Instalação rápida (uma linha)
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/victorbillyph/ESPortable32/main/install.sh)
+```
+
+Depois é só usar:
+
+```bash
+esportable32          # Menu interativo
+esportable32 flash    # Compilar e gravar no ESP32
+esportable32 config   # Configurar WiFi
+```
+
+---
+
 ## ✨ Funcionalidades
 
 | Funcionalidade | Detalhes |
@@ -29,13 +45,13 @@ Um firmware completo para ESP32 que transforma o microcontrolador em um servidor
 
 ## 🚀 Começando
 
-### 1. Instalar dependências
+### 1. Instalar
 
 ```bash
-python3 esportable32.py install
+bash <(curl -s https://raw.githubusercontent.com/victorbillyph/ESPortable32/main/install.sh)
 ```
 
-Isso cria um ambiente virtual e instala **PlatformIO** e **esptool**.
+Isso clona o projeto, cria um ambiente virtual, instala PlatformIO + esptool, e deixa o comando `esportable32` disponível no terminal.
 
 ### 2. Conectar o ESP32
 
@@ -51,7 +67,7 @@ sudo usermod -aG dialout $USER
 ### 3. Compilar e gravar
 
 ```bash
-python3 esportable32.py flash
+esportable32 flash
 ```
 
 Isso compila o firmware, cria o sistema de arquivos LittleFS e grava tudo no ESP32.
@@ -68,7 +84,7 @@ Senha:  configurar
 Conecte-se a essa rede e acesse http://192.168.4.1 para configurar via navegador, ou use o serial:
 
 ```bash
-python3 esportable32.py config
+esportable32 config
 ```
 
 ### 5. Acessar
@@ -76,30 +92,30 @@ python3 esportable32.py config
 Após configurado, o ESP32 se conecta à sua rede WiFi. Descubra o IP:
 
 ```bash
-python3 esportable32.py status
+esportable32 status
 ```
 
 E acesse `http://<ip>/` no navegador.
 
 ---
 
-## 🛠️ Comandos da ferramenta
+## 🛠️ Comandos
 
 ```
-python3 esportable32.py              Menu interativo
-python3 esportable32.py install      Instalar dependências
-python3 esportable32.py build        Compilar firmware
-python3 esportable32.py flash        Compilar + gravar no ESP32
-python3 esportable32.py monitor      Monitor serial
-python3 esportable32.py uploadfs     Atualizar arquivos web (LittleFS)
-python3 esportable32.py config       Configurar WiFi via serial
-python3 esportable32.py status       Status do ESP32
+esportable32                  Menu interativo
+esportable32 install          Instalar dependências
+esportable32 build            Compilar firmware
+esportable32 flash            Compilar + gravar no ESP32
+esportable32 monitor          Monitor serial
+esportable32 uploadfs         Atualizar arquivos web (LittleFS)
+esportable32 config           Configurar WiFi via serial
+esportable32 status           Status do ESP32
 ```
 
 ### Modo interativo
 
 ```
-python3 esportable32.py
+esportable32
 ```
 
 ```
@@ -191,7 +207,7 @@ Resposta:
 
 ## 📡 Comandos Serial
 
-Conecte via monitor serial (`python3 esportable32.py monitor`) e digite:
+Conecte via monitor serial (`esportable32 monitor`) e digite:
 
 | Comando | Descrição |
 |---|---|
