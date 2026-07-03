@@ -894,9 +894,9 @@ class ESPortableTUI(App):
     """
 
     SCREENS = {
-        "scan": ScanScreen(),
-        "connect": ConnectScreen(),
-        "main": MainScreen(),
+        "scan": ScanScreen,
+        "connect": ConnectScreen,
+        "main": MainScreen,
     }
 
     def __init__(self):
