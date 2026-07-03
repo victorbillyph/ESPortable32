@@ -19,9 +19,9 @@ bash <(curl -s https://raw.githubusercontent.com/victorbillyph/ESPortable32/main
 Depois é só usar:
 
 ```bash
-esportable32          # Menu interativo
-esportable32 flash    # Compilar e gravar no ESP32
-esportable32 config   # Configurar WiFi
+esportable32              # Menu interativo (1: Instalar, 2: Configurar, 3: Sair)
+esportable32 install      # Instalar direto em um ESP32
+esportable32 config       # Configurar WiFi
 ```
 
 ---
@@ -64,13 +64,13 @@ sudo usermod -aG dialout $USER
 # Faça logout e login novamente
 ```
 
-### 3. Compilar e gravar
+### 3. Instalar no ESP32
 
 ```bash
-esportable32 flash
+esportable32 install
 ```
 
-Isso compila o firmware, cria o sistema de arquivos LittleFS e grava tudo no ESP32.
+Isso compila o firmware, apaga completamente a flash do ESP32 (formatação limpa), e grava o firmware + LittleFS.
 
 ### 4. Configurar WiFi
 
@@ -81,7 +81,7 @@ SSID:   ESPortable32-Setup
 Senha:  configurar
 ```
 
-Conecte-se a essa rede e acesse http://192.168.4.1 para configurar via navegador, ou use o serial:
+Conecte-se a essa rede e acesse http://192.168.4.1 para configurar via navegador, ou use:
 
 ```bash
 esportable32 config
@@ -89,11 +89,7 @@ esportable32 config
 
 ### 5. Acessar
 
-Após configurado, o ESP32 se conecta à sua rede WiFi. Descubra o IP:
-
-```bash
-esportable32 status
-```
+Após configurado, o ESP32 se conecta à sua rede WiFi. Execute `esportable32 config` de novo para ver o IP.
 
 E acesse `http://<ip>/` no navegador.
 
@@ -102,17 +98,12 @@ E acesse `http://<ip>/` no navegador.
 ## 🛠️ Comandos
 
 ```
-esportable32                  Menu interativo
-esportable32 install          Instalar dependências
-esportable32 build            Compilar firmware
-esportable32 flash            Compilar + gravar no ESP32
-esportable32 monitor          Monitor serial
-esportable32 uploadfs         Atualizar arquivos web (LittleFS)
-esportable32 config           Configurar WiFi via serial
-esportable32 status           Status do ESP32
+esportable32              Menu interativo
+esportable32 install      Instalar no ESP32 (compila + formata + grava)
+esportable32 config       Configurar WiFi
 ```
 
-### Modo interativo
+### Menu
 
 ```
 esportable32
@@ -120,16 +111,11 @@ esportable32
 
 ```
 ┌──────────────────────────────────────────────────┐
-│           ESPortable32 - Menu Principal           │
+│                 ESPortable32                     │
 ├──────────────────────────────────────────────────┤
-│  1   Compilar firmware                           │
-│  2   Gravar no ESP32 (flash + littlefs)           │
-│  3   Monitor serial                              │
-│  4   Upload LittleFS (arquivos web)               │
-│  5   Configurar WiFi via serial                  │
-│  6   Status do ESP32                             │
-│  7   Instalar dependências                       │
-│  0   Sair                                        │
+│  1   Instalar ESPortable32 em um ESP32           │
+│  2   Configurar ESP32                            │
+│  3   Sair                                        │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -207,7 +193,7 @@ Resposta:
 
 ## 📡 Comandos Serial
 
-Conecte via monitor serial (`esportable32 monitor`) e digite:
+Conecte via serial (ex: `screen /dev/ttyACM0 115200` ou `python3 -m serial.tools.miniterm /dev/ttyACM0 115200`) e digite:
 
 | Comando | Descrição |
 |---|---|
