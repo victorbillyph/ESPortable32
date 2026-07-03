@@ -1,5 +1,6 @@
 #include "WebServer.h"
 #include <WiFi.h>
+#include <ArduinoJson.h>
 
 WebServer::WebServer(StateManager& state, ConfigManager& config, WebSockets& ws)
     : _server(80), _state(state), _config(config), _ws(ws), _captive(false) {}
@@ -37,6 +38,56 @@ void WebServer::begin() {
         request->send(204);
     });
 
+    _server.on("/api/gpio", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleApiGpioList(request);
+    });
+    _server.on("/api/gpio", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleApiGpioSet(request);
+    });
+    _server.on("/api/gpio", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        request->send(204);
+    });
+
+    _server.on("/api/fs/list", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleApiFsList(request);
+    });
+    _server.on("/api/fs/read", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleApiFsRead(request);
+    });
+    _server.on("/api/fs/write", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleApiFsWrite(request);
+    });
+    _server.on("/api/fs/write", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        request->send(204);
+    });
+    _server.on("/api/fs/delete", HTTP_DELETE, [this](AsyncWebServerRequest* request) {
+        handleApiFsDelete(request);
+    });
+    _server.on("/api/fs/delete", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        request->send(204);
+    });
+
+    _server.on("/api/apps", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        handleApiApps(request);
+    });
+    _server.on("/api/apps", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleApiStoreInstall(request);
+    });
+    _server.on("/api/apps", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        request->send(204);
+    });
+
+    _server.on("/api/proxy", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleApiProxy(request);
+    });
+    _server.on("/api/proxy", HTTP_OPTIONS, [this](AsyncWebServerRequest* request) {
+        request->send(204);
+    });
+
+    _server.on("/api/setup", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        handleApiSetup(request);
+    });
+
     _server.begin();
     Serial.println("[Server] HTTP server started on port 80");
 }
@@ -53,7 +104,7 @@ void WebServer::handleRequest(AsyncWebServerRequest* request) {
         return;
     }
 
-    if (_state.isLocked() && !url.startsWith("/unlock") && !url.startsWith("/api") && !url.startsWith("/css") && !url.startsWith("/js")) {
+    if (_state.isLocked() && !url.startsWith("/unlock") && !url.startsWith("/api") && !url.startsWith("/css") && !url.startsWith("/js") && !url.startsWith("/apps")) {
         request->redirect("/unlock.html");
         return;
     }
@@ -72,9 +123,16 @@ void WebServer::handleFileRequest(AsyncWebServerRequest* request) {
     String contentType = getContentType(path);
 
     if (LittleFS.exists(path)) {
-        AsyncWebServerResponse *response = request->beginResponse(LittleFS, path, contentType);
-        response->addHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-        request->send(response);
+        File f = LittleFS.open(path, "r");
+        if (f) {
+            String content = f.readString();
+            f.close();
+            AsyncWebServerResponse *response = request->beginResponse(200, contentType, content);
+            response->addHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+            request->send(response);
+        } else {
+            request->send(500, "text/plain", "Error reading: " + path);
+        }
     } else {
         request->send(404, "text/plain", "Not found: " + path);
     }
@@ -185,6 +243,342 @@ void WebServer::handleApiRestart(AsyncWebServerRequest* request) {
     request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Restarting...\"}");
     delay(500);
     ESP.restart();
+}
+
+void WebServer::handleApiGpioList(AsyncWebServerRequest* request) {
+    const int pins[] = {2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33};
+    String json = "[";
+    for (int i = 0; i < 19; i++) {
+        int p = pins[i];
+        if (i > 0) json += ",";
+        json += "{\"pin\":" + String(p) + ",";
+        json += "\"state\":" + String(digitalRead(p)) + "}";
+    }
+    json += "]";
+    request->send(200, "application/json", json);
+}
+
+void WebServer::handleApiGpioSet(AsyncWebServerRequest* request) {
+    String body = request->arg("plain");
+    if (body.length() == 0) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Body vazio\"}");
+        return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, body);
+    if (err) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"JSON invalido\"}");
+        return;
+    }
+    int pin = doc["pin"] | -1;
+    if (pin < 0 || pin > 39) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"PIN invalido\"}");
+        return;
+    }
+    if (doc.containsKey("mode")) {
+        String mode = doc["mode"] | "";
+        if (mode == "input") {
+            pinMode(pin, INPUT);
+        } else if (mode == "output") {
+            pinMode(pin, OUTPUT);
+        } else if (mode == "input_pullup") {
+            pinMode(pin, INPUT_PULLUP);
+        } else {
+            pinMode(pin, INPUT_PULLDOWN);
+        }
+    }
+    if (doc.containsKey("state")) {
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, doc["state"] | 0);
+    }
+    request->send(200, "application/json", "{\"status\":\"ok\"}");
+}
+
+void WebServer::handleApiFsList(AsyncWebServerRequest* request) {
+    String path = request->arg("path");
+    if (path.length() == 0) path = "/";
+    File root = LittleFS.open(path);
+    if (!root || !root.isDirectory()) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Diretorio invalido\"}");
+        return;
+    }
+    String json = "[";
+    File f = root.openNextFile();
+    bool first = true;
+    while (f) {
+        if (!first) json += ",";
+        first = false;
+        json += "{\"name\":\"" + String(f.name()) + "\",";
+        json += "\"size\":" + String(f.size()) + ",";
+        json += "\"dir\":" + String(f.isDirectory() ? "true" : "false") + "}";
+        f = root.openNextFile();
+    }
+    json += "]";
+    request->send(200, "application/json", json);
+}
+
+void WebServer::handleApiFsRead(AsyncWebServerRequest* request) {
+    String path = request->arg("path");
+    if (path.length() == 0) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"path obrigatorio\"}");
+        return;
+    }
+    if (!LittleFS.exists(path)) {
+        request->send(404, "application/json", "{\"status\":\"error\",\"message\":\"Arquivo nao encontrado\"}");
+        return;
+    }
+    File f = LittleFS.open(path, "r");
+    if (!f) {
+        request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Erro ao abrir\"}");
+        return;
+    }
+    String content = f.readString();
+    f.close();
+    String json = "{\"path\":\"" + path + "\",\"size\":" + String(content.length()) + ",\"content\":\"";
+    for (size_t i = 0; i < content.length(); i++) {
+        char c = content.charAt(i);
+        if (c == '"') json += "\\\"";
+        else if (c == '\\') json += "\\\\";
+        else if (c == '\n') json += "\\n";
+        else if (c == '\r') json += "\\r";
+        else if (c == '\t') json += "\\t";
+        else json += c;
+    }
+    json += "\"}";
+    request->send(200, "application/json", json);
+}
+
+void WebServer::handleApiFsWrite(AsyncWebServerRequest* request) {
+    String body = request->arg("plain");
+    if (body.length() == 0) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Body vazio\"}");
+        return;
+    }
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, body);
+    if (err) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"JSON invalido\"}");
+        return;
+    }
+    String path = doc["path"] | "";
+    String content = doc["content"] | "";
+    if (path.length() == 0) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"path obrigatorio\"}");
+        return;
+    }
+    File f = LittleFS.open(path, "w");
+    if (!f) {
+        request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Erro ao escrever\"}");
+        return;
+    }
+    f.print(content);
+    f.close();
+    request->send(200, "application/json", "{\"status\":\"ok\",\"path\":\"" + path + "\",\"size\":" + String(content.length()) + "}");
+}
+
+void WebServer::handleApiFsDelete(AsyncWebServerRequest* request) {
+    String path = request->arg("path");
+    if (path.length() == 0) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"path obrigatorio\"}");
+        return;
+    }
+    if (!LittleFS.exists(path)) {
+        request->send(404, "application/json", "{\"status\":\"error\",\"message\":\"Arquivo nao encontrado\"}");
+        return;
+    }
+    if (LittleFS.remove(path)) {
+        request->send(200, "application/json", "{\"status\":\"ok\",\"path\":\"" + path + "\"}");
+    } else {
+        request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Erro ao deletar\"}");
+    }
+}
+
+void WebServer::handleApiApps(AsyncWebServerRequest* request) {
+    String json = "{\"apps\":[";
+    File root = LittleFS.open("/apps");
+    if (root && root.isDirectory()) {
+        File f = root.openNextFile();
+        bool first = true;
+        while (f) {
+            String name = String(f.name());
+            if (name.endsWith(".html")) {
+                if (!first) json += ",";
+                first = false;
+                String id = name.substring(0, name.length() - 5);
+                json += "{\"id\":\"" + id + "\",\"path\":\"" + name + "\",\"size\":" + String(f.size()) + "}";
+            }
+            f = root.openNextFile();
+        }
+    }
+    json += "]}";
+    request->send(200, "application/json", json);
+}
+
+void WebServer::handleApiStoreInstall(AsyncWebServerRequest* request) {
+    String body = request->arg("plain");
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, body);
+    if (err || !doc.containsKey("url")) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"JSON invalido ou url ausente\"}");
+        return;
+    }
+    String url = doc["url"].as<String>();
+    String filename = doc["path"].as<String>();
+    if (filename.length() == 0) {
+        int lastSlash = url.lastIndexOf('/');
+        if (lastSlash >= 0) filename = url.substring(lastSlash + 1);
+        else filename = url;
+    }
+    if (!filename.startsWith("/")) filename = "/apps/" + filename;
+    else if (!filename.startsWith("/apps/")) filename = "/apps/" + filename.substring(1);
+
+    String host = "raw.githubusercontent.com";
+    String rawPath = "/victorbillyph/ESPortable32/main/apps/" + url;
+    if (url.startsWith("http")) {
+        int slash = url.indexOf("/", 8);
+        if (slash > 0) {
+            host = url.substring(0, slash);
+            int pathStart = url.indexOf("/", slash + 1);
+            if (pathStart > 0) rawPath = url.substring(pathStart);
+            else rawPath = "/";
+            host = host.substring(url.indexOf("/") + 2);
+        }
+    }
+
+    WiFiClient client;
+    if (!client.connect(host.c_str(), 80)) {
+        request->send(502, "application/json", "{\"status\":\"error\",\"message\":\"Falha ao conectar\"}");
+        return;
+    }
+    client.println("GET " + rawPath + " HTTP/1.1");
+    client.println("Host: " + host);
+    client.println("User-Agent: ESPortable32");
+    client.println("Connection: close");
+    client.println();
+
+    unsigned long timeout = millis() + 8000;
+    while (!client.available() && millis() < timeout) {
+        delay(10);
+    }
+
+    String response;
+    bool headerEnd = false;
+    while (client.available() && millis() < timeout) {
+        String line = client.readStringUntil('\n');
+        if (!headerEnd && line == "\r") {
+            headerEnd = true;
+            continue;
+        }
+        if (headerEnd) {
+            response += line + "\n";
+        }
+    }
+    client.stop();
+
+    if (response.length() == 0) {
+        request->send(502, "application/json", "{\"status\":\"error\",\"message\":\"Resposta vazia\"}");
+        return;
+    }
+
+    if (!LittleFS.exists("/apps")) LittleFS.mkdir("/apps");
+    File f = LittleFS.open(filename, "w");
+    if (!f) {
+        request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Erro ao salvar\"}");
+        return;
+    }
+    f.print(response);
+    f.close();
+
+    request->send(200, "application/json", "{\"status\":\"ok\",\"path\":\"" + filename + "\",\"size\":" + String(response.length()) + "}");
+}
+
+void WebServer::handleApiProxy(AsyncWebServerRequest* request) {
+    String body = request->arg("plain");
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, body);
+    if (err || !doc.containsKey("url")) {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"JSON invalido ou url ausente\"}");
+        return;
+    }
+    String url = doc["url"].as<String>();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "http://" + url;
+    }
+    int slash = url.indexOf("/", 8);
+    String host, path;
+    if (slash > 0) {
+        host = url.substring(0, slash);
+        path = url.substring(slash);
+    } else {
+        host = url;
+        path = "/";
+    }
+    int colon = host.indexOf(':', 8);
+    int port = 80;
+    if (colon > 0) {
+        port = host.substring(colon + 1).toInt();
+        host = host.substring(0, colon);
+    }
+    host = host.substring(host.indexOf("/") + 2);
+
+    WiFiClient client;
+    if (!client.connect(host.c_str(), port)) {
+        request->send(502, "application/json", "{\"status\":\"error\",\"message\":\"Falha ao conectar\"}");
+        return;
+    }
+    client.println("GET " + path + " HTTP/1.1");
+    client.println("Host: " + host);
+    client.println("User-Agent: ESPortable32");
+    client.println("Connection: close");
+    client.println();
+
+    unsigned long timeout = millis() + 8000;
+    while (!client.available() && millis() < timeout) {
+        delay(10);
+    }
+
+    String response;
+    bool headerEnd = false;
+    while (client.available() && millis() < timeout) {
+        String line = client.readStringUntil('\n');
+        if (!headerEnd && line == "\r") {
+            headerEnd = true;
+            continue;
+        }
+        if (headerEnd) {
+            response += line + "\n";
+        }
+    }
+    client.stop();
+
+    String json = "{\"url\":\"" + url + "\",\"content\":\"";
+    for (size_t i = 0; i < response.length(); i++) {
+        char c = response.charAt(i);
+        if (c == '"') json += "\\\"";
+        else if (c == '\\') json += "\\\\";
+        else if (c == '\n') json += "\\n";
+        else if (c == '\r') json += "\\r";
+        else if (c == '\t') json += "\\t";
+        else if (c < 32) json += " ";
+        else json += c;
+    }
+    json += "\"}";
+    request->send(200, "application/json", json);
+}
+
+void WebServer::handleApiSetup(AsyncWebServerRequest* request) {
+    String ssid = request->arg("ssid");
+    String pass = request->arg("pass");
+    String pin = request->arg("pin");
+    if (ssid.length() > 0) {
+        _config.setWifi(ssid, pass);
+    }
+    if (pin.length() > 0) {
+        _config.setPin(pin);
+        _state.setPin(pin);
+    }
+    _config.save();
+    request->send(200, "text/plain", "OK");
 }
 
 String WebServer::getContentType(const String& path) {

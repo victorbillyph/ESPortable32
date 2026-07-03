@@ -1,0 +1,36 @@
+{
+  "apps": [
+    {
+      "id": "gpio",
+      "name": "GPIO Control",
+      "icon": "💡",
+      "desc": "Controlar pinos GPIO do ESP32 (ligar/desligar, ler sensores)",
+      "version": "1.0.0",
+      "file": "gpio.html"
+    },
+    {
+      "id": "editor",
+      "name": "Editor de Texto",
+      "icon": "✏️",
+      "desc": "Editor de texto para arquivos no LittleFS do ESP32",
+      "version": "1.0.0",
+      "file": "editor.html"
+    },
+    {
+      "id": "proxy",
+      "name": "Proxy HTTP",
+      "icon": "🌐",
+      "desc": "Faça requisições HTTP externas através do ESP32",
+      "version": "1.0.0",
+      "file": "proxy.html"
+    },
+    {
+      "id": "monitor",
+      "name": "Monitor Serial",
+      "icon": "📊",
+      "desc": "Monitore sensores e status em tempo real via WebSocket",
+      "version": "1.0.0",
+      "file": "monitor.html"
+    }
+  ]
+}

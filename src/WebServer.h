@@ -29,6 +29,16 @@ private:
     void handleApiStatus(AsyncWebServerRequest* request);
     void handleApiUnlock(AsyncWebServerRequest* request);
     void handleApiRestart(AsyncWebServerRequest* request);
+    void handleApiGpioList(AsyncWebServerRequest* request);
+    void handleApiGpioSet(AsyncWebServerRequest* request);
+    void handleApiFsList(AsyncWebServerRequest* request);
+    void handleApiFsRead(AsyncWebServerRequest* request);
+    void handleApiFsWrite(AsyncWebServerRequest* request);
+    void handleApiFsDelete(AsyncWebServerRequest* request);
+    void handleApiApps(AsyncWebServerRequest* request);
+    void handleApiStoreInstall(AsyncWebServerRequest* request);
+    void handleApiProxy(AsyncWebServerRequest* request);
+    void handleApiSetup(AsyncWebServerRequest* request);
     String getContentType(const String& path);
     void handleSerialCommand(const String& cmd, AsyncWebServerRequest* request);
 };

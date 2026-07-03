@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPIO Control</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:sans-serif;background:#1a1a2e;color:#eee;padding:1rem;height:100vh;display:flex;flex-direction:column}
+.titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.titlebar h1{color:#e94560;font-size:1.2rem}
+.titlebar .info{color:#888;font-size:.8rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;flex:1;overflow-y:auto;padding-bottom:8px}
+.pin-card{background:#16213e;border-radius:8px;padding:10px;text-align:center;border:1px solid #333;transition:all .2s;cursor:pointer}
+.pin-card:hover{border-color:#e94560}
+.pin-card.on{background:#1a3a1a;border-color:#4caf50}
+.pin-card.off{background:#3a1a1a;border-color:#e94560}
+.pin-card .pin-num{font-size:1.3rem;font-weight:700;color:#fff}
+.pin-card .pin-state{font-size:.7rem;margin-top:4px;text-transform:uppercase}
+.pin-card.on .pin-state{color:#4caf50}
+.pin-card.off .pin-state{color:#e94560}
+.pin-card .pin-action{font-size:.75rem;margin-top:6px;padding:4px 0;border-radius:4px}
+.pin-card.on .pin-action{background:#2a5a2a;color:#fff}
+.pin-card.off .pin-action{background:#5a2a2a;color:#fff}
+#status{text-align:center;color:#888;font-size:.8rem;padding:8px}
+.toolbar{margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap}
+.toolbar .btn{background:#e94560;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:.8rem;cursor:pointer}
+.toolbar .btn:hover{background:#c73650}
+.toolbar .btn.secondary{background:#16213e;border:1px solid #333}
+.toolbar .btn.secondary:hover{background:#1f2f52}
+.toolbar select{background:#0f3460;color:#fff;border:1px solid #333;border-radius:6px;padding:6px;font-size:.8rem}
+@media(max-width:400px){.grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}}
+</style>
+</head>
+<body>
+<div class="titlebar">
+<h1>💡 GPIO Control</h1>
+<span class="info" id="info"></span>
+</div>
+<div class="toolbar">
+<select id="pinFilter"><option value="all">Todos</option><option value="output">Saída</option><option value="input">Entrada</option></select>
+<button class="btn secondary" id="refreshBtn">🔄 Atualizar</button>
+</div>
+<div id="gpioGrid" class="grid"></div>
+<div id="status"></div>
+<script>
+(function(){
+var SDK = window.ESPortableSDK;
+if (SDK) SDK.setTitle('GPIO Control');
+var pins = [2,4,5,12,13,14,15,16,17,18,19,21,22,23,25,26,27,32,33];
+var pinStates = {};
+
+function api(path, opts){
+if(SDK) return SDK.api.get(path);
+return fetch(path).then(function(r){return r.json();});
+}
+function apiPost(path, body){
+if(SDK) return SDK.api.post(path, body);
+return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json();});
+}
+
+function setStatus(msg,err){
+document.getElementById('status').textContent=msg;
+document.getElementById('status').style.color=err?'#e94560':'#888';
+}
+
+function load(){
+setStatus('Carregando...');
+api('/api/gpio').then(function(data){
+var grid=document.getElementById('gpioGrid');
+grid.innerHTML='';
+var filter=document.getElementById('pinFilter').value;
+pins.forEach(function(p){
+var state=0;
+if(Array.isArray(data)){
+var found=data.find(function(x){return x.pin===p;});
+if(found)state=found.state;
+} else if(data&&data.pins){
+var found=data.pins.find(function(x){return x.pin===p;});
+if(found)state=found.state;
+}
+pinStates[p]=state;
+var card=document.createElement('div');
+card.className='pin-card '+(state?'on':'off');
+card.dataset.pin=p;
+card.innerHTML=
+'<div class="pin-num">'+p+'</div>'+
+'<div class="pin-state">'+(state?'LIGADO':'DESLIGADO')+'</div>'+
+'<div class="pin-action">'+(state?'Desligar':'Ligar')+'</div>';
+card.addEventListener('click',function(){
+var newState=pinStates[p]?0:1;
+apiPost('/api/gpio',{pin:p,state:newState}).then(function(r){
+if(r.status==='ok'){pinStates[p]=newState;load();setStatus('GPIO '+p+' '+(newState?'LIGADO':'DESLIGADO'));}
+else setStatus('Erro ao alterar GPIO '+p,true);
+}).catch(function(e){setStatus('Erro: '+e.message,true);});
+});
+grid.appendChild(card);
+});
+setStatus('OK - '+pins.length+' GPIOs');
+document.getElementById('info').textContent=pins.length+' gpios';
+}).catch(function(e){
+setStatus('Erro ao carregar: '+e.message,true);
+});
+}
+
+document.getElementById('refreshBtn').addEventListener('click',load);
+document.getElementById('pinFilter').addEventListener('change',load);
+(SDK?SDK.onReady:function(cb){cb()})(function(){load();});
+})();
+</script>
+</body>
+</html>

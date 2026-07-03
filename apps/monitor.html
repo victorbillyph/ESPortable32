@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:sans-serif;background:#1a1a2e;color:#eee;padding:1rem;height:100vh;display:flex;flex-direction:column}
+.titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.titlebar h1{color:#e94560;font-size:1.2rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.card{background:#16213e;border-radius:8px;padding:1rem;text-align:center;border:1px solid #333}
+.card .value{font-size:1.8rem;font-weight:700;color:#e94560;margin:.3rem 0}
+.card .label{color:#888;font-size:.75rem;text-transform:uppercase}
+.card .unit{color:#aaa;font-size:.8rem}
+.card.good .value{color:#4caf50}
+.card.warn .value{color:#ff9800}
+.card.bad .value{color:#e94560}
+#status{text-align:center;color:#888;font-size:.8rem;padding:8px}
+</style>
+</head>
+<body>
+<div class="titlebar">
+<h1>📊 Monitor do Sistema</h1>
+<span id="uptime" style="color:#888;font-size:.8rem"></span>
+</div>
+<div class="cards" id="cards">
+<div class="card" id="card-heap"><div class="label">Heap Livre</div><div class="value" id="val-heap">--</div><div class="unit">bytes</div></div>
+<div class="card" id="card-rssi"><div class="label">WiFi RSSI</div><div class="value" id="val-rssi">--</div><div class="unit">dBm</div></div>
+<div class="card" id="card-cpu"><div class="label">CPU Freq</div><div class="value" id="val-cpu">--</div><div class="unit">MHz</div></div>
+<div class="card" id="card-uptime"><div class="label">Uptime</div><div class="value" id="val-uptime">--</div><div class="unit">segundos</div></div>
+<div class="card" id="card-ip"><div class="label">IP</div><div class="value" id="val-ip" style="font-size:1rem">--</div><div class="unit"></div></div>
+<div class="card" id="card-state"><div class="label">Estado</div><div class="value" id="val-state" style="font-size:1rem">--</div><div class="unit"></div></div>
+</div>
+<div id="status">Conectando...</div>
+<script>
+(function(){
+var SDK = window.ESPortableSDK;
+if (SDK) SDK.setTitle('Monitor');
+
+function api(path){
+if(SDK) return SDK.api.get(path);
+return fetch(path).then(function(r){return r.json();});
+}
+
+function update(){
+api('/api/status').then(function(d){
+if(d.free_heap!==undefined){
+document.getElementById('val-heap').textContent=d.free_heap;
+var heapCard=document.getElementById('card-heap');
+heapCard.className='card '+(d.free_heap<10000?'bad':d.free_heap<20000?'warn':'good');
+}
+if(d.wifi_rssi!==undefined){
+document.getElementById('val-rssi').textContent=d.wifi_rssi;
+var rssiCard=document.getElementById('card-rssi');
+rssiCard.className='card '+(d.wifi_rssi<-80?'bad':d.wifi_rssi<-60?'warn':'good');
+}
+if(d.cpu_freq!==undefined) document.getElementById('val-cpu').textContent=d.cpu_freq;
+if(d.uptime!==undefined) document.getElementById('val-uptime').textContent=d.uptime;
+if(d.ip) document.getElementById('val-ip').textContent=d.ip;
+if(d.state_name) document.getElementById('val-state').textContent=d.state_name;
+document.getElementById('status').textContent='Atualizado: '+new Date().toLocaleTimeString();
+}).catch(function(e){
+document.getElementById('status').textContent='Erro: '+e.message;
+});
+}
+
+update();
+setInterval(update,3000);
+})();
+</script>
+</body>
+</html>
