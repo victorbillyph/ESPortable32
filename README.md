@@ -19,9 +19,10 @@ bash <(curl -s https://raw.githubusercontent.com/victorbillyph/ESPortable32/main
 Depois é só usar:
 
 ```bash
-esportable32              # Menu interativo (1: Instalar, 2: Configurar, 3: Sair)
-esportable32 install      # Instalar direto em um ESP32
-esportable32 config       # Configurar WiFi
+esportable32                    # Menu interativo (1: Instalar, 2: Configurar, 3: Reparação, 4: Sair)
+esportable32 install            # Instalar direto em um ESP32
+esportable32 config             # Configurar WiFi
+esportable32 repair             # Diagnosticar e reparar problemas
 ```
 
 ---
@@ -101,6 +102,7 @@ E acesse `http://<ip>/` no navegador.
 esportable32              Menu interativo
 esportable32 install      Instalar no ESP32 (compila + formata + grava)
 esportable32 config       Configurar WiFi
+esportable32 repair       Diagnosticar e reparar problemas no ESP32
 ```
 
 ### Menu
@@ -115,7 +117,8 @@ esportable32
 ├──────────────────────────────────────────────────┤
 │  1   Instalar ESPortable32 em um ESP32           │
 │  2   Configurar ESP32                            │
-│  3   Sair                                        │
+│  3   Reparação (diagnóstico + reparo)            │
+│  4   Sair                                        │
 └──────────────────────────────────────────────────┘
 ```
 
