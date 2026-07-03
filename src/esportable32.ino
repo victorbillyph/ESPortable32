@@ -175,7 +175,7 @@ void processSerialCommand(String cmd) {
                 String path = doc["path"] | "/";
                 File root = LittleFS.open(path);
                 if (root && root.isDirectory()) {
-                    json = "[";
+                    String json = "[";
                     File f = root.openNextFile();
                     bool first = true;
                     while (f) {

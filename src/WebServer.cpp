@@ -275,7 +275,7 @@ void WebServer::handleApiGpioSet(AsyncWebServerRequest* request) {
         request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"PIN invalido\"}");
         return;
     }
-    if (doc.containsKey("mode")) {
+    if (!doc["mode"].isNull()) {
         String mode = doc["mode"] | "";
         if (mode == "input") {
             pinMode(pin, INPUT);
@@ -287,7 +287,7 @@ void WebServer::handleApiGpioSet(AsyncWebServerRequest* request) {
             pinMode(pin, INPUT_PULLDOWN);
         }
     }
-    if (doc.containsKey("state")) {
+    if (!doc["state"].isNull()) {
         pinMode(pin, OUTPUT);
         digitalWrite(pin, doc["state"] | 0);
     }
@@ -418,7 +418,7 @@ void WebServer::handleApiStoreInstall(AsyncWebServerRequest* request) {
     String body = request->arg("plain");
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, body);
-    if (err || !doc.containsKey("url")) {
+    if (err || doc["url"].isNull()) {
         request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"JSON invalido ou url ausente\"}");
         return;
     }
@@ -496,7 +496,7 @@ void WebServer::handleApiProxy(AsyncWebServerRequest* request) {
     String body = request->arg("plain");
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, body);
-    if (err || !doc.containsKey("url")) {
+    if (err || doc["url"].isNull()) {
         request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"JSON invalido ou url ausente\"}");
         return;
     }

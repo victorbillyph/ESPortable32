@@ -12,6 +12,7 @@ from typing import Optional
 
 from textual import work
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer, Grid
 from textual.reactive import reactive
 from textual.screen import Screen
