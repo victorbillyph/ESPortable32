@@ -93,13 +93,17 @@ def opcao_instalar():
     ok("Firmware compilado")
 
     # 2. Compilar filesystem (LittleFS)
-    info("Compilando sistema de arquivos (LittleFS)...")
-    r = executar([pio, "run", "--project-dir", PROJECT_DIR, "--target", "buildfs"], capture_output=True, text=True)
-    if r.returncode != 0:
-        warn("Falha ao compilar LittleFS. Verifique se a pasta data/ existe e tem arquivos.")
-        print(r.stderr)
+    data_files = [f for f in os.listdir(os.path.join(PROJECT_DIR, "data")) if f != ".gitkeep"]
+    if data_files:
+        info("Compilando sistema de arquivos (LittleFS)...")
+        r = executar([pio, "run", "--project-dir", PROJECT_DIR, "--target", "buildfs"], capture_output=True, text=True)
+        if r.returncode != 0:
+            warn("Falha ao compilar LittleFS. Verifique se a pasta data/ existe e tem arquivos.")
+            print(r.stderr)
+        else:
+            ok("LittleFS compilado")
     else:
-        ok("LittleFS compilado")
+        info("LittleFS vazio (sem arquivos estáticos) — pode ser preenchido via API posteriormente.")
 
     # 3. Apagar flash (formatação completa)
     info("Apagando flash (formatação completa)...")
