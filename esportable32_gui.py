@@ -233,7 +233,8 @@ class ESPortable32GUI:
         style.configure("TLabelframe", background=FUNDO, foreground=TEXTO, borderwidth=1)
         style.configure("TLabelframe.Label", background=FUNDO, foreground=TEXTO)
 
-        self._show_connect()
+        self._show_scanning()
+        self.root.after(100, self._auto_scan)
         self.root.protocol("WM_DELETE_WINDOW", self._quit)
         self.root.mainloop()
 
@@ -242,13 +243,82 @@ class ESPortable32GUI:
         self.cli.disconnect()
         self.root.destroy()
 
-    def _show_connect(self):
+    def _show_scanning(self):
         for w in self.root.winfo_children():
             w.destroy()
-        self.root.geometry("500x400")
+        self.root.geometry("400x250")
 
         frame = tk.Frame(self.root, bg=FUNDO)
         frame.pack(expand=True, fill="both", padx=40, pady=40)
+
+        tk.Label(frame, text="ESPortable32", font=("", 22, "bold"),
+                 fg=VERMELHO, bg=FUNDO).pack(pady=(0, 10))
+
+        self._scan_label = tk.Label(frame, text="Procurando ESP32...",
+                                    font=("", 12), fg=TEXTO2, bg=FUNDO)
+        self._scan_label.pack(pady=(0, 20))
+
+        self._scan_progress = ttk.Progressbar(frame, mode="indeterminate", length=250)
+        self._scan_progress.pack()
+        self._scan_progress.start(10)
+
+        self._scan_btn = tk.Button(frame, text="Pular (inserir manualmente)",
+                                   bg=AZUL, fg=TEXTO, relief="flat", cursor="hand2",
+                                   padx=15, pady=5, command=self._show_connect)
+        self._scan_btn.pack(pady=(20, 0))
+
+        self._scan_status = tk.Label(frame, text="", fg=TEXTO2, bg=FUNDO, font=("", 9))
+        self._scan_status.pack(pady=(10, 0))
+
+    def _auto_scan(self):
+        def scan():
+            ports_to_try = []
+            try:
+                import serial.tools.list_ports
+                ports = serial.tools.list_ports.comports()
+                for p in ports:
+                    ports_to_try.append(p.device)
+            except Exception:
+                pass
+            if not ports_to_try:
+                if sys.platform == "win32":
+                    ports_to_try = [f"COM{i}" for i in range(1, 10)]
+                elif sys.platform == "darwin":
+                    ports_to_try = ["/dev/cu.usbmodem101", "/dev/cu.usbserial-110",
+                                    "/dev/cu.SLAB_USBtoUART", "/dev/cu.wchusbserial*"]
+                else:
+                    ports_to_try = ["/dev/ttyACM0", "/dev/ttyACM1",
+                                    "/dev/ttyUSB0", "/dev/ttyUSB1",
+                                    "/dev/ttyS0", "/dev/ttyS1"]
+
+            self.root.after(0, lambda: self._scan_status.config(text=f"Tentando {len(ports_to_try)} portas..."))
+
+            for port in ports_to_try:
+                self.root.after(0, lambda p=port: self._scan_status.config(text=f"Testando {p}..."))
+                time.sleep(0.1)
+                ok, _ = self.cli.connect_serial(port, 115200)
+                if ok:
+                    self.cli.mode = "serial"
+                    self.root.after(0, lambda: self._on_connect(None))
+                    return
+
+            if self.cli.mode != "serial":
+                self.root.after(0, lambda: self._scan_status.config(text=""))
+                self.root.after(0, self._show_connect)
+
+        threading.Thread(target=scan, daemon=True).start()
+
+    def _show_connect(self, msg=None):
+        for w in self.root.winfo_children():
+            w.destroy()
+        self.root.geometry("500x430")
+
+        frame = tk.Frame(self.root, bg=FUNDO)
+        frame.pack(expand=True, fill="both", padx=40, pady=40)
+
+        if msg:
+            tk.Label(frame, text=msg, fg=TEXTO2, bg=FUNDO,
+                     font=("", 9), wraplength=400).pack(pady=(0, 10))
 
         tk.Label(frame, text="ESPortable32", font=("", 22, "bold"),
                  fg=VERMELHO, bg=FUNDO).pack(pady=(0, 5))

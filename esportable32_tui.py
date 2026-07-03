@@ -207,8 +207,8 @@ TITLE = "ESPortable32"
 SUB = "Terminal UI — ESP32"
 
 
-class ConnectScreen(Screen):
-    """Conexao TCP/IP ou Serial."""
+class ScanScreen(Screen):
+    """Auto-scan de portas seriais."""
 
     def compose(self):
         yield Header()
@@ -216,6 +216,69 @@ class ConnectScreen(Screen):
             Static(f"\n  {TITLE}", classes="title"),
             Static(f"  {SUB}", classes="subtitle"),
             Static(""),
+            Static("Procurando ESP32 via Serial...", id="scan-msg"),
+            Static("", id="scan-detail"),
+            Button("Pular (inserir manualmente)", id="scan-skip"),
+            classes="connect-box",
+        )
+        yield Footer()
+
+    def on_mount(self):
+        self._scan()
+
+    def _scan(self):
+        def scan():
+            ports_to_try = []
+            try:
+                import serial.tools.list_ports
+                ports = serial.tools.list_ports.comports()
+                for p in ports:
+                    ports_to_try.append(p.device)
+            except Exception:
+                pass
+            if not ports_to_try:
+                if sys.platform == "win32":
+                    ports_to_try = [f"COM{i}" for i in range(1, 10)]
+                elif sys.platform == "darwin":
+                    ports_to_try = ["/dev/cu.usbmodem101", "/dev/cu.usbserial-110",
+                                    "/dev/cu.SLAB_USBtoUART", "/dev/cu.wchusbserial*"]
+                else:
+                    ports_to_try = ["/dev/ttyACM0", "/dev/ttyACM1",
+                                    "/dev/ttyUSB0", "/dev/ttyUSB1",
+                                    "/dev/ttyS0", "/dev/ttyS1"]
+
+            for port in ports_to_try:
+                self.call_from_thread(self.query_one("#scan-detail").update, f"Testando {port}...")
+                time.sleep(0.1)
+                ok, _ = self.app.cli.connect_serial(port, 115200)
+                if ok:
+                    self.app.cli.mode = "serial"
+                    self.call_from_thread(self.app.push_screen, "main")
+                    return
+
+            if self.app.cli.mode != "serial":
+                self.call_from_thread(self._show_connect)
+
+        threading.Thread(target=scan, daemon=True).start()
+
+    def _show_connect(self):
+        self.app.pop_screen()
+        self.app.push_screen("connect")
+
+    def on_button_pressed(self, event):
+        if event.button.id == "scan-skip":
+            self._show_connect()
+
+
+class ConnectScreen(Screen):
+    """Conexao TCP/IP ou Serial manual."""
+
+    def compose(self):
+        yield Header()
+        yield Container(
+            Static(f"\n  {TITLE}", classes="title"),
+            Static(f"  {SUB}", classes="subtitle"),
+            Static("", id="manual-msg"),
             TabbedContent(
                 TabPane("TCP/IP", id="tcp"),
                 TabPane("Serial", id="serial"),
@@ -830,6 +893,7 @@ class ESPortableTUI(App):
     """
 
     SCREENS = {
+        "scan": ScanScreen(),
         "connect": ConnectScreen(),
         "main": MainScreen(),
     }
@@ -839,7 +903,7 @@ class ESPortableTUI(App):
         self.cli = ESPClient()
 
     def on_ready(self):
-        self.push_screen("connect")
+        self.push_screen("scan")
 
 
 def main():
