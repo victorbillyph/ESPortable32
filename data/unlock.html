@@ -19,7 +19,7 @@ button:hover{background:#c73650}
 <h1>🔒 Bloqueado</h1>
 <p>Digite o PIN para desbloquear</p>
 <input type="password" id="pin" placeholder="PIN" maxlength="6" inputmode="numeric" autofocus>
-<button onclick="unlock()">Desbloquear</button>
+<button id="unlockBtn">Desbloquear</button>
 <p id="error" class="error"></p>
 </div>
 <script>
@@ -30,6 +30,7 @@ fetch('/api/unlock',{method:'POST',headers:{'Content-Type':'application/x-www-fo
 .catch(e=>document.getElementById('error').textContent='Erro de conexão');
 }
 document.getElementById('pin').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
+document.getElementById('unlockBtn').addEventListener('click',unlock);
 </script>
 </body>
 </html>

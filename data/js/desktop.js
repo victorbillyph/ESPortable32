@@ -225,5 +225,6 @@ async function unlock() {
 document.getElementById('lockPin').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') unlock();
 });
+document.getElementById('unlockBtn').addEventListener('click', unlock);
 
 checkLock();

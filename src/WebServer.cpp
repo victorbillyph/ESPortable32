@@ -72,7 +72,9 @@ void WebServer::handleFileRequest(AsyncWebServerRequest* request) {
     String contentType = getContentType(path);
 
     if (LittleFS.exists(path)) {
-        request->send(LittleFS, path, contentType);
+        AsyncWebServerResponse *response = request->beginResponse(LittleFS, path, contentType);
+        response->addHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        request->send(response);
     } else {
         request->send(404, "text/plain", "Not found: " + path);
     }
