@@ -314,19 +314,16 @@ def opcao_reparar():
 
     # Reparos
     for cod, desc in problemas:
-        if cod == "modo_setup" or cod == "sem_config":
+        if cod == "modo_setup" or cod == "sem_config" or cod == "wifi_falhou":
             info(f"Problema: {desc}")
-            r = input(f"  {NEGRITO}Resolver: configurar WiFi agora? (s/N): {RESET}").strip().lower()
+            print()
+            info("Use a interface gráfica ou de terminal para configurar:")
+            info("  esportable32 gui      (interface gráfica)")
+            info("  esportableui          (interface de terminal)")
+            r = input(f"\n  {NEGRITO}Abrir GUI agora? (s/N): {RESET}").strip().lower()
             if r == "s":
-                opcao_configurar()
-                return
-
-        elif cod == "wifi_falhou":
-            info(f"Problema: {desc}")
-            r = input(f"  {NEGRITO}Resolver: reconfigurar WiFi? (s/N): {RESET}").strip().lower()
-            if r == "s":
-                opcao_configurar()
-                return
+                abrir_gui()
+            return
 
         elif cod == "bootloop" or cod == "crash":
             info(f"Problema: {desc}")
@@ -358,103 +355,7 @@ def opcao_reparar():
     info("  python3 esportable32.py install   (instalação limpa)")
 
 
-# ── 2: Configurar ESP32 ───────────────────────────────────────────
-
-def opcao_configurar():
-    header("Configurar ESP32")
-
-    port = achar_porta()
-    if not port:
-        err("Nenhum ESP32 encontrado. Conecte o cabo USB.")
-        return
-
-    info(f"ESP32 detectado em: {port}")
-
-    try:
-        import serial
-    except ImportError:
-        err("Biblioteca pyserial necessária. Instale: pip install pyserial")
-        return
-
-    s = serial.Serial(port, 115200, timeout=3)
-    s.dtr = False
-    time.sleep(0.1)
-    s.dtr = True
-    time.sleep(2)
-
-    # Ler boot
-    out = b""
-    start = time.time()
-    while time.time() - start < 10:
-        if s.in_waiting:
-            out += s.read(s.in_waiting)
-            if b"Digite HELP" in out or b"Ready at" in out:
-                break
-        time.sleep(0.1)
-
-    txt = out.decode("utf-8", errors="replace")
-    ja_configurado = "Ready at" in txt
-
-    if ja_configurado:
-        info("ESP32 já está configurado e conectado ao WiFi.")
-        print()
-        for line in txt.splitlines():
-            if "Ready at" in line:
-                print(f"  {line.strip()}")
-        print()
-        r = input(f"  {NEGRITO}Deseja reconfigurar (resetar configuração)? (s/N): {RESET}").strip().lower()
-        if r == "s":
-            s.write(b"RESET\n")
-            time.sleep(1)
-            ok("Resetado! Configure novamente.")
-            s.close()
-            return opcao_configurar()
-        s.close()
-        return
-
-    if "Modo Setup" not in txt:
-        warn("ESP32 não respondeu. Verifique a conexão.")
-        s.close()
-        return
-
-    # Modo setup — configurar WiFi
-    print()
-    ssid = input(f"  {NEGRITO}SSID{RESET} da rede WiFi: ").strip()
-    if not ssid:
-        warn("Cancelado.")
-        s.close()
-        return
-
-    senha = input(f"  {NEGRITO}Senha{RESET} (Enter se for aberta): ").strip()
-    pin = input(f"  {NEGRITO}PIN{RESET} de bloqueio (opcional): ").strip()
-
-    print()
-    info("Enviando configurações...")
-
-    s.write(f"WIFI={ssid},{senha}\n".encode())
-    time.sleep(0.3)
-    if pin:
-        s.write(f"PIN={pin}\n".encode())
-        time.sleep(0.3)
-    s.write(b"SAVE\n")
-    time.sleep(1.5)
-
-    resp = b""
-    while s.in_waiting:
-        resp += s.read(s.in_waiting)
-    s.close()
-
-    if b"OK" in resp:
-        ok("Configuração salva! ESP32 vai reiniciar.")
-        print()
-        info("Aguarde ~20s e descubra o IP:")
-        info("  python3 " + sys.argv[0])
-        info("  (opção 2 de novo para ver o status)")
-    else:
-        warn("Algo deu errado. Tente novamente.")
-
-
-# ── 5: Abrir GUI ─────────────────────────────────────────────────
+# ── Abrir GUI ─────────────────────────────────────────────────────
 
 def abrir_gui():
     gui_path = os.path.join(PROJECT_DIR, "esportable32_gui.py")
@@ -474,10 +375,9 @@ def menu():
     while True:
         os.system("clear" if os.name == "posix" else "cls")
         header("ESPortable32")
-        print(f"  {NEGRITO}1{RESET}   Instalar ESPortable32 em um ESP32")
-        print(f"  {NEGRITO}2{RESET}   Configurar ESP32")
-        print(f"  {NEGRITO}3{RESET}   Reparação (diagnóstico + reparo)")
-        print(f"  {NEGRITO}4{RESET}   Abrir GUI (app desktop)")
+        print(f"  {NEGRITO}1{RESET}   Instalar/Reinstalar firmware no ESP32")
+        print(f"  {NEGRITO}2{RESET}   Reparação (diagnóstico + reparo)")
+        print(f"  {NEGRITO}3{RESET}   Abrir GUI (app desktop)")
         print(f"  {NEGRITO}0{RESET}   Sair")
         print()
         try:
@@ -489,17 +389,15 @@ def menu():
         if op == "1":
             opcao_instalar()
         elif op == "2":
-            opcao_configurar()
-        elif op == "3":
             opcao_reparar()
-        elif op == "4":
+        elif op == "3":
             abrir_gui()
         elif op == "0":
             print()
             ok("Até logo!")
             break
         else:
-            warn("Opção inválida! Digite 1, 2, 3, 4 ou 0.")
+            warn("Opção inválida! Digite 1, 2, 3 ou 0.")
             time.sleep(1)
             continue
 
@@ -514,18 +412,16 @@ def menu():
 
 def main():
     if len(sys.argv) > 1:
-        # Modo direto: esportable32 install / config / repair
+        # Modo direto: esportable32 install / repair / gui
         acao = sys.argv[1]
         if acao == "install":
             opcao_instalar()
-        elif acao == "config":
-            opcao_configurar()
         elif acao == "repair":
             opcao_reparar()
         elif acao == "gui":
             abrir_gui()
         else:
-            print(f"Uso: {sys.argv[0]} [install|config|repair|gui]")
+            print(f"Uso: {sys.argv[0]} [install|repair|gui]")
             print(f"     {sys.argv[0]}           (menu interativo)")
         return
 
