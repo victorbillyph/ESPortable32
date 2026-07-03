@@ -83,7 +83,7 @@ def opcao_instalar():
     info(f"ESP32 detectado em: {port}")
     print()
 
-    # 1. Compilar
+    # 1. Compilar firmware
     info("Compilando firmware...")
     r = executar([pio, "run", "--project-dir", PROJECT_DIR], capture_output=True, text=True)
     if r.returncode != 0:
@@ -92,14 +92,23 @@ def opcao_instalar():
         sys.exit(1)
     ok("Firmware compilado")
 
-    # 2. Apagar flash (formatação completa)
-    info("A pagando flash (formatação completa)...")
+    # 2. Compilar filesystem (LittleFS)
+    info("Compilando sistema de arquivos (LittleFS)...")
+    r = executar([pio, "run", "--project-dir", PROJECT_DIR, "--target", "buildfs"], capture_output=True, text=True)
+    if r.returncode != 0:
+        warn("Falha ao compilar LittleFS. Verifique se a pasta data/ existe e tem arquivos.")
+        print(r.stderr)
+    else:
+        ok("LittleFS compilado")
+
+    # 3. Apagar flash (formatação completa)
+    info("Apagando flash (formatação completa)...")
     esptool = achar_esptool()
     executar([esptool, "--port", port, "--baud", "921600", "erase_flash"],
              capture_output=False)
     ok("Flash apagado")
 
-    # 3. Gravar firmware + bootloader + partitions
+    # 4. Gravar firmware + bootloader + partitions + LittleFS
     info("Gravando firmware...")
     bl = os.path.join(BUILD_DIR, "bootloader.bin")
     pt = os.path.join(BUILD_DIR, "partitions.bin")
@@ -199,7 +208,23 @@ def opcao_reparar():
             problemas.append(("littlefs", "LittleFS não montou"))
             err("LittleFS com problemas de montagem")
         elif "Storage" in txt and "Mounted" in txt:
-            ok("LittleFS montado corretamente")
+            ok("LittleFS montado")
+            # Verificar se tem arquivos
+            for line in txt.splitlines():
+                if "Used: 0" in line:
+                    warn("LittleFS está vazio! Nenhum arquivo web encontrado.")
+                    problemas.append(("littlefs_vazio", "LittleFS vazio (sem arquivos web)"))
+                    break
+                elif "Used:" in line:
+                    try:
+                        used = int(line.split("Used:")[1].strip().rstrip(','))
+                        if used < 100:
+                            warn(f"LittleFS com poucos arquivos: {used} bytes")
+                            problemas.append(("littlefs_vazio", "LittleFS quase vazio"))
+                        else:
+                            ok(f"LittleFS com {used} bytes de arquivos")
+                    except ValueError:
+                        pass
 
         # Core dump / panic
         if "panic" in txt.lower() or "Guru Meditation" in txt or "abort()" in txt:
@@ -306,7 +331,7 @@ def opcao_reparar():
                 opcao_instalar()
                 return
 
-        elif cod == "littlefs":
+        elif cod == "littlefs" or cod == "littlefs_vazio":
             info(f"Problema: {desc}")
             r = input(f"  {NEGRITO}Resolver: reenviar LittleFS (arquivos web)? (s/N): {RESET}").strip().lower()
             if r == "s":
