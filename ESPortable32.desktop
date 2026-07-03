@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ESPortable32
+Comment=Interface desktop para ESP32 — GPIO, editor, terminal, loja
+Exec=esportable32_gui
+Icon=esportable32
+Categories=Development;Electronics;
+Terminal=false
+StartupNotify=true

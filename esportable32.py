@@ -450,6 +450,20 @@ def opcao_configurar():
         warn("Algo deu errado. Tente novamente.")
 
 
+# ── 5: Abrir GUI ─────────────────────────────────────────────────
+
+def abrir_gui():
+    gui_path = os.path.join(PROJECT_DIR, "esportable32_gui.py")
+    if not os.path.exists(gui_path):
+        err("GUI não encontrada: esportable32_gui.py")
+        return
+    info("Abrindo interface gráfica...")
+    try:
+        subprocess.Popen([sys.executable, gui_path])
+    except Exception as e:
+        err(f"Erro ao abrir GUI: {e}")
+
+
 # ── Menu principal ────────────────────────────────────────────────
 
 def menu():
@@ -459,7 +473,8 @@ def menu():
         print(f"  {NEGRITO}1{RESET}   Instalar ESPortable32 em um ESP32")
         print(f"  {NEGRITO}2{RESET}   Configurar ESP32")
         print(f"  {NEGRITO}3{RESET}   Reparação (diagnóstico + reparo)")
-        print(f"  {NEGRITO}4{RESET}   Sair")
+        print(f"  {NEGRITO}4{RESET}   Abrir GUI (app desktop)")
+        print(f"  {NEGRITO}0{RESET}   Sair")
         print()
         try:
             op = input(f"  {NEGRITO}>>>{RESET} ").strip()
@@ -474,11 +489,13 @@ def menu():
         elif op == "3":
             opcao_reparar()
         elif op == "4":
+            abrir_gui()
+        elif op == "0":
             print()
             ok("Até logo!")
             break
         else:
-            warn("Opção inválida! Digite 1, 2, 3 ou 4.")
+            warn("Opção inválida! Digite 1, 2, 3, 4 ou 0.")
             time.sleep(1)
             continue
 
@@ -501,8 +518,10 @@ def main():
             opcao_configurar()
         elif acao == "repair":
             opcao_reparar()
+        elif acao == "gui":
+            abrir_gui()
         else:
-            print(f"Uso: {sys.argv[0]} [install|config|repair]")
+            print(f"Uso: {sys.argv[0]} [install|config|repair|gui]")
             print(f"     {sys.argv[0]}           (menu interativo)")
         return
 

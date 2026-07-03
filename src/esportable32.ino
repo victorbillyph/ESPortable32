@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <LittleFS.h>
+#include <ArduinoJson.h>
 #include "StateManager.h"
 #include "ConfigManager.h"
 #include "WebServer.h"
@@ -135,8 +136,85 @@ void handleSetupLoop() {
     }
 }
 
+String apiResponseJson(bool ok, const String& data) {
+    return "{\"status\":\"" + String(ok ? "ok" : "error") + "\",\"data\":" + data + "}";
+}
+
 void processSerialCommand(String cmd) {
     if (cmd.length() == 0) return;
+
+    // JSON API via serial
+    if (cmd.startsWith("{")) {
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, cmd);
+        if (!err) {
+            String action = doc["action"] | "";
+            if (action == "gpio_list") {
+                const int pins[] = {2,4,5,12,13,14,15,16,17,18,19,21,22,23,25,26,27,32,33};
+                String json = "[";
+                for (int i = 0; i < 19; i++) {
+                    int p = pins[i];
+                    if (i > 0) json += ",";
+                    json += "{\"pin\":" + String(p) + ",\"state\":" + String(digitalRead(p)) + "}";
+                }
+                json += "]";
+                Serial.println(apiResponseJson(true, json));
+                return;
+            }
+            if (action == "gpio_set") {
+                int pin = doc["pin"] | -1;
+                int state = doc["state"] | 0;
+                if (pin >= 0 && pin < 40) {
+                    pinMode(pin, OUTPUT);
+                    digitalWrite(pin, state);
+                    Serial.println(apiResponseJson(true, "{\"pin\":" + String(pin) + ",\"state\":" + String(state) + "}"));
+                    return;
+                }
+            }
+            if (action == "fs_list") {
+                String path = doc["path"] | "/";
+                File root = LittleFS.open(path);
+                if (root && root.isDirectory()) {
+                    json = "[";
+                    File f = root.openNextFile();
+                    bool first = true;
+                    while (f) {
+                        if (!first) json += ",";
+                        first = false;
+                        json += "{\"name\":\"" + String(f.name()) + "\",\"size\":" + String(f.size()) + ",\"dir\":" + String(f.isDirectory() ? "true" : "false") + "}";
+                        f = root.openNextFile();
+                    }
+                    json += "]";
+                    Serial.println(apiResponseJson(true, json));
+                    return;
+                }
+            }
+            if (action == "fs_read") {
+                String path = doc["path"] | "";
+                if (LittleFS.exists(path)) {
+                    File f = LittleFS.open(path, "r");
+                    if (f) {
+                        String content = f.readString();
+                        f.close();
+                        String json = "{\"path\":\"" + path + "\",\"size\":" + String(content.length()) + ",\"content\":\"";
+                        for (size_t i = 0; i < content.length(); i++) {
+                            char c = content.charAt(i);
+                            if (c == '"') json += "\\\"";
+                            else if (c == '\\') json += "\\\\";
+                            else if (c == '\n') json += "\\n";
+                            else if (c == '\r') json += "\\r";
+                            else json += c;
+                        }
+                        json += "\"}";
+                        Serial.println(apiResponseJson(true, json));
+                        return;
+                    }
+                }
+            }
+        }
+        Serial.println(apiResponseJson(false, "\"unknown\""));
+        return;
+    }
 
     Serial.printf("> %s\n", cmd.c_str());
 
