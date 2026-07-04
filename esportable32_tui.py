@@ -648,7 +648,10 @@ class SetupScreen(Screen):
         self._log(f"[green]{len(self._networks)} redes encontradas[/]")
 
     def _log(self,msg):
-        self.app.call_from_thread(lambda: self.query_one("#st-log",RichLog).write(msg))
+        if threading.current_thread() is threading.main_thread():
+            self.query_one("#st-log",RichLog).write(msg)
+        else:
+            self.app.call_from_thread(lambda: self.query_one("#st-log",RichLog).write(msg))
 
     def on_button_pressed(self,e):
         bid=e.button.id
