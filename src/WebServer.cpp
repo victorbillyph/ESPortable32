@@ -443,7 +443,7 @@ void WebServer::handleApiApps(AsyncWebServerRequest* request) {
                     int start = manifest.indexOf('{', idx + key.length());
                     int end = manifest.indexOf('}', start);
                     if (start > 0 && end > start) {
-                        json += "," + manifest.substring(start, end + 1);
+                        json += "," + manifest.substring(start + 1, end);
                     }
                 } else {
                     json += ",\"type\":\"user\",\"name\":\"" + id + "\"";

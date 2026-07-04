@@ -636,8 +636,6 @@ class SetupScreen(Screen):
                     Input(placeholder="Nome da rede",id="st-ssid"),
                     Label("Senha:"),
                     Input(placeholder="Senha WiFi",id="st-pass",password=True),
-                    Label("PIN (opcional):"),
-                    Input(placeholder="4-8 digitos",id="st-pin",password=True),
                     Button("  Salvar e reiniciar",id="st-save",classes="win-btn",variant="primary"),
                     Button("  Cancelar",id="st-cancel",classes="win-btn",variant="error"),
                     RichLog(id="st-log",highlight=True,markup=True,classes="st-log"),
@@ -700,17 +698,13 @@ class SetupScreen(Screen):
     def _do_save(self):
         ssid=self.query_one("#st-ssid",Input).value.strip()
         passwd=self.query_one("#st-pass",Input).value.strip()
-        pin=self.query_one("#st-pin",Input).value.strip()
         if not ssid:
             self._log("[red]SSID obrigatorio[/]")
             return
         self._log(f"[cyan]Configurando WiFi {ssid}...[/]")
         def task():
             try:
-                cmds=f"WIFI={ssid},{passwd}"
-                if pin:
-                    cmds+=f"\nPIN={pin}"
-                cmds+="\nSAVE"
+                cmds=f"WIFI={ssid},{passwd}\nSAVE"
                 _log(f"Setup._do_save: sending config")
                 resp=self.app.cli._serial_cmd(cmds)
                 self.app.call_from_thread(self._log,f"[green]{resp}[/]")
