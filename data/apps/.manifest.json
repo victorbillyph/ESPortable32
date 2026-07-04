@@ -1,5 +1,0 @@
-{
-  "files": { "name": "Arquivos", "icon": "&#9776;", "type": "system", "desc": "Gerenciador de arquivos" },
-  "appstore": { "name": "App Store", "icon": "&#9733;", "type": "system", "desc": "Instalar novos apps" },
-  "settings": { "name": "Config.", "icon": "&#9881;", "type": "system", "desc": "WiFi, PIN, dispositivo" }
-}

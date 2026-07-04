@@ -1,7 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <ArduinoJson.h>
-#include <LittleFS.h>
+#include <Preferences.h>
 
 class ConfigManager {
 public:
@@ -19,11 +18,10 @@ public:
     void setWifi(const String& ssid, const String& pass);
     void setDeviceName(const String& name);
     void setPin(const String& pin);
-
-    JsonDocument& getDoc();
+    void clear();
 
 private:
-    String _path;
+    Preferences _prefs;
     String _ssid;
     String _pass;
     String _name;
