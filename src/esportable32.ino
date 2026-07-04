@@ -7,6 +7,8 @@
 #include "WebSockets.h"
 #include "BluetoothService.h"
 
+#define FIRMWARE_VERSION "1.0.0"
+
 StateManager state;
 ConfigManager config;
 WebSockets webSockets;
@@ -224,6 +226,8 @@ void processSerialCommand(String cmd) {
 
     if (cmd == "HELP") {
         printHelp();
+    } else if (cmd == "VERSION") {
+        Serial.printf("FIRMWARE_VERSION=%s\n", FIRMWARE_VERSION);
     } else if (cmd == "STATUS") {
         Serial.printf("State: %d (%s)\n", state.getState(), state.getStateName());
         Serial.printf("WiFi Mode: %d, RSSI: %d\n", WiFi.getMode(), WiFi.RSSI());
@@ -284,6 +288,7 @@ void printHelp() {
     Serial.println("╚══════════════════════════════════╝");
     Serial.println("Comandos:");
     Serial.println("  HELP            - Mostra esta ajuda");
+    Serial.println("  VERSION         - Versao do firmware");
     Serial.println("  STATUS          - Status do sistema");
     Serial.println("  WIFI=ssid,pass  - Configurar WiFi");
     Serial.println("  NAME=nome       - Nome do dispositivo");

@@ -20,8 +20,14 @@ from textual.widgets import (
 )
 
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 _VERSION_URL = "https://raw.githubusercontent.com/victorbillyph/ESPortable32/main/esportable32_tui.py"
+
+
+def _version_tuple(v):
+    parts = v.strip().lstrip("vV").split(".")
+    return tuple(int(p) for p in parts) if parts else (0,)
+
 
 _DEBUG = True
 _LOG_FILE = os.path.expanduser("~/.local/share/esportable32/debug.log")
@@ -298,6 +304,8 @@ class BIOSScreen(Screen):
 
     def _found(self):
         _log("BIOS: ESP32 found, checking SETUP mode")
+        self.app._needs_update = False
+        self.app._firmware_version = None
         try:
             resp=self.app.cli._serial_cmd("STATUS")
             _log(f"BIOS: STATUS response={resp[:100]}")
@@ -307,6 +315,20 @@ class BIOSScreen(Screen):
                 return
         except Exception as ex:
             _log(f"BIOS: STATUS error={ex}")
+        try:
+            ver_resp=self.app.cli._serial_cmd("VERSION")
+            _log(f"BIOS: VERSION response={ver_resp[:80]}")
+            m=re.search(r'FIRMWARE_VERSION=([\d.]+)', ver_resp)
+            if m:
+                fwv=m.group(1)
+                self.app._firmware_version = fwv
+                if _version_tuple(VERSION) > _version_tuple(fwv):
+                    _log(f"BIOS: update needed TUI={VERSION} FW={fwv}")
+                    self.app._needs_update = True
+                else:
+                    _log(f"BIOS: firmware up to date ({fwv})")
+        except Exception as ex:
+            _log(f"BIOS: VERSION error={ex}")
         _log("BIOS: switch_screen(found)")
         self.app.switch_screen("found")
 
@@ -535,9 +557,11 @@ class FoundScreen(Screen):
                 Static("\n  ESPortable32 encontrado!",classes="fd-title"),
                 Static("",id="fd-info"),
                 Static("",id="fd-ip"),
+                Static("",id="fd-version"),
                 Container(
                     Button("  \u2197  Abrir no navegador",id="fd-browser",classes="win-btn"),
                     Button("  \u2691  Reparar",id="fd-repair",classes="win-btn"),
+                    Button("  \u21E9  Atualizar",id="fd-update",classes="win-btn",variant="primary"),
                     Button("  \u274C  Sair",id="fd-exit",classes="win-btn",variant="error"),
                     classes="fd-btns",
                 ),
@@ -571,6 +595,13 @@ class FoundScreen(Screen):
                     self.query_one("#fd-info").update("[yellow]Modo Setup — configure o WiFi abrindo o navegador[/]")
             except Exception: pass
 
+        fwv = getattr(self.app, '_firmware_version', None)
+        needs = getattr(self.app, '_needs_update', False)
+        if fwv:
+            self.query_one("#fd-version").update(f"Firmware: [bold]{fwv}[/]  TUI: {VERSION}")
+        if not needs:
+            self.query_one("#fd-update").display = False
+
     def on_button_pressed(self,e):
         b=e.button.id
         if b=="fd-browser":
@@ -583,6 +614,8 @@ class FoundScreen(Screen):
                 import webbrowser
                 webbrowser.open(url)
         elif b=="fd-repair":
+            self.app.push_screen("repair")
+        elif b=="fd-update":
             self.app.push_screen("repair")
         elif b=="fd-exit":
             self.app.exit()
