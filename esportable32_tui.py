@@ -15,7 +15,8 @@ from textual.app import App
 from textual.containers import Container
 from textual.screen import Screen
 from textual.widgets import (
-    Button, RichLog, Static,
+    Button, Input, Label,
+    RichLog, Static,
 )
 
 
@@ -296,7 +297,17 @@ class BIOSScreen(Screen):
         self.app.call_from_thread(lambda: self.query_one("#bios-prog").update(msg))
 
     def _found(self):
-        _log("BIOS: ESP32 found, switch_screen(found)")
+        _log("BIOS: ESP32 found, checking SETUP mode")
+        try:
+            resp=self.app.cli._serial_cmd("STATUS")
+            _log(f"BIOS: STATUS response={resp[:100]}")
+            if "SETUP" in resp or "setup" in resp:
+                _log("BIOS: SETUP detected -> switch_screen(setup)")
+                self.app.switch_screen("setup")
+                return
+        except Exception as ex:
+            _log(f"BIOS: STATUS error={ex}")
+        _log("BIOS: switch_screen(found)")
         self.app.switch_screen("found")
 
     def _skip_show(self):
@@ -577,6 +588,108 @@ class FoundScreen(Screen):
             self.app.exit()
 
 
+# ── Setup Screen ─────────────────────────────────────────────────
+
+class SetupScreen(Screen):
+    def compose(self):
+        yield Container(
+            Container(
+                Static("  Assistente de configuracao WiFi",classes="st-title"),
+                Static("",id="st-status"),
+                Container(
+                    Label("Redes encontradas:"),
+                    Container(id="st-networks",classes="st-net-list"),
+                    Label("SSID:"),
+                    Input(placeholder="Nome da rede",id="st-ssid"),
+                    Label("Senha:"),
+                    Input(placeholder="Senha WiFi",id="st-pass",password=True),
+                    Label("PIN (opcional):"),
+                    Input(placeholder="4-8 digitos",id="st-pin",password=True),
+                    Button("  Salvar e reiniciar",id="st-save",classes="win-btn",variant="primary"),
+                    Button("  Cancelar",id="st-cancel",classes="win-btn",variant="error"),
+                    RichLog(id="st-log",highlight=True,markup=True,classes="st-log"),
+                    classes="st-body",
+                ),
+                classes="st-box",
+            ),
+            classes="st-screen",
+        )
+
+    def on_mount(self):
+        self._networks=[]
+        self._log("[green]Escaneando redes WiFi...[/]")
+        self._scan()
+
+    def _scan(self):
+        def task():
+            try:
+                resp=self.app.cli._serial_cmd("SCAN")
+                _log(f"Setup._scan: {resp[:200]}")
+                nets=[]
+                for line in resp.splitlines():
+                    if line.startswith("NET:"):
+                        nets.append(line[4:].strip())
+                self._networks=nets
+                self.app.call_from_thread(self._render_nets)
+            except Exception as ex:
+                self.app.call_from_thread(self._log,f"[red]Erro ao escanear: {ex}[/]")
+        threading.Thread(target=task,daemon=True).start()
+
+    def _render_nets(self):
+        c=self.query_one("#st-networks")
+        c.remove_children()
+        if not self._networks:
+            c.mount(Label("[red]Nenhuma rede encontrada[/]"))
+            self._log("[red]Nenhuma rede WiFi encontrada[/]")
+            return
+        for i,ssid in enumerate(self._networks):
+            b=Button(f"  {ssid}",id=f"st-net-{i}",classes="st-net-btn")
+            c.mount(b)
+        self._log(f"[green]{len(self._networks)} redes encontradas[/]")
+
+    def _log(self,msg):
+        self.app.call_from_thread(lambda: self.query_one("#st-log",RichLog).write(msg))
+
+    def on_button_pressed(self,e):
+        bid=e.button.id
+        if bid and bid.startswith("st-net-"):
+            idx=int(bid.split("-")[2])
+            if 0<=idx<len(self._networks):
+                self.query_one("#st-ssid",Input).value=self._networks[idx]
+        elif bid=="st-save":
+            self._do_save()
+        elif bid=="st-cancel":
+            self.app.switch_screen("found")
+
+    def _do_save(self):
+        ssid=self.query_one("#st-ssid",Input).value.strip()
+        passwd=self.query_one("#st-pass",Input).value.strip()
+        pin=self.query_one("#st-pin",Input).value.strip()
+        if not ssid:
+            self._log("[red]SSID obrigatorio[/]")
+            return
+        self._log(f"[cyan]Configurando WiFi {ssid}...[/]")
+        def task():
+            try:
+                cmds=f"WIFI={ssid},{passwd}"
+                if pin:
+                    cmds+=f"\nPIN={pin}"
+                cmds+="\nSAVE"
+                _log(f"Setup._do_save: sending config")
+                resp=self.app.cli._serial_cmd(cmds)
+                self.app.call_from_thread(self._log,f"[green]{resp}[/]")
+                self.app.call_from_thread(self._log,"[yellow]ESP32 reiniciando...[/]")
+                time.sleep(2)
+                self.app.cli.disconnect()
+                self.app.call_from_thread(self._after_save)
+            except Exception as ex:
+                self.app.call_from_thread(self._log,f"[red]Erro: {ex}[/]")
+        threading.Thread(target=task,daemon=True).start()
+
+    def _after_save(self):
+        self.app.switch_screen("bios")
+
+
 # ── App ───────────────────────────────────────────────────────────
 
 class ESPortableTUI(App):
@@ -603,12 +716,27 @@ class ESPortableTUI(App):
     .fd-btns { align:center middle; margin:1 0; }
     .fd-btns Button { min-width:24; margin:0 0 1 0; }
 
+    .st-screen { align:center middle; }
+    .st-box { width:64; height:auto; border:solid #000080; background:#c0c0c0; padding:1; }
+    .st-title { text-style:bold; background:#000080; color:white; padding:0 1; margin:0 0 1 0; }
+    #st-status { text-align:center; margin:0 0 1 0; }
+    .st-body { padding:0 1; }
+    .st-body Label { text-style:bold; color:#000080; margin:0 0 0 0; }
+    .st-body Input { margin:0 0 1 0; }
+    .st-net-list { height:auto; max-height:8; overflow-y:auto; border:solid #808080; margin:0 0 1 0; padding:1; }
+    .st-net-btn { width:100%; margin:0 0 1 0; }
+    .st-net-btn:last-child { margin:0; }
+    .st-log { border:solid #808080; height:4; margin:1 0; }
+
     RichLog { border:solid #c0c0c0; height:1fr; }
+    Input { margin:0 0 1 0; }
+    Label { padding:0; }
     """
 
     SCREENS = {
         "bios": BIOSScreen,
         "found": FoundScreen,
+        "setup": SetupScreen,
         "repair": RepairScreen,
     }
 

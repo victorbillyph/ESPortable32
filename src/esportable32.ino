@@ -266,6 +266,13 @@ void processSerialCommand(String cmd) {
             bluetooth.end();
         }
         Serial.printf("OK:Bluetooth %s\n", on ? "ligado" : "desligado");
+    } else if (cmd == "SCAN") {
+        int n = WiFi.scanNetworks();
+        for (int i = 0; i < n; i++) {
+            Serial.print("NET:");
+            Serial.println(WiFi.SSID(i));
+        }
+        Serial.printf("OK:%d networks found\n", n);
     } else {
         Serial.println("ERRO:Comando desconhecido. Digite HELP");
     }
@@ -281,6 +288,7 @@ void printHelp() {
     Serial.println("  WIFI=ssid,pass  - Configurar WiFi");
     Serial.println("  NAME=nome       - Nome do dispositivo");
     Serial.println("  PIN=1234        - Configurar PIN");
+    Serial.println("  SCAN            - Escanear redes WiFi");
     Serial.println("  SAVE            - Salvar e reiniciar");
     Serial.println("  RESET           - Reset de fabrica");
     Serial.println("  BT=on|off       - Ligar/desligar Bluetooth");
