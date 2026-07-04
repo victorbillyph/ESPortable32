@@ -14,7 +14,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .status-dot.green{background:var(--green);box-shadow:0 0 6px var(--green)}
 .status-dot.red{background:var(--red);box-shadow:0 0 6px var(--red)}
 .status-dot.yellow{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
-#content{flex:1;overflow-y:auto;padding:1.5rem}
+#content{flex:1;overflow:hidden;position:relative;display:flex}
+#app-frame{width:100%;height:100%;border:none;background:var(--bg)}
 .view{display:none}
 .view.active{display:block}
 h1{font-size:1.3rem;font-weight:600;margin-bottom:1.2rem;color:var(--text)}

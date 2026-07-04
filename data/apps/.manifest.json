@@ -1,7 +1,5 @@
 {
-  "dashboard": { "name": "Dashboard", "icon": "&#9632;", "type": "system", "desc": "Status do sistema" },
-  "gpio": { "name": "GPIO", "icon": "&#9889;", "type": "system", "desc": "Controle de pinos" },
   "files": { "name": "Arquivos", "icon": "&#9776;", "type": "system", "desc": "Gerenciador de arquivos" },
-  "terminal": { "name": "Terminal", "icon": "&#9000;", "type": "system", "desc": "Terminal serial via WebSocket" },
-  "settings": { "name": "Configuracoes", "icon": "&#9881;", "type": "system", "desc": "WiFi, PIN, dispositivo" }
+  "appstore": { "name": "App Store", "icon": "&#9733;", "type": "system", "desc": "Instalar novos apps" },
+  "settings": { "name": "Config.", "icon": "&#9881;", "type": "system", "desc": "WiFi, PIN, dispositivo" }
 }

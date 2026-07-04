@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App Store - ESPortable32</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.container{max-width:600px;margin:0 auto;padding:1rem}
+h1{font-size:1.3rem;margin-bottom:1.2rem}
+.avail{display:flex;gap:.8rem;flex-wrap:wrap}
+.app-card{flex:1;min-width:200px;background:var(--surface2);border-radius:10px;padding:1rem;border:1px solid var(--border)}
+.app-card h3{font-size:1rem;margin-bottom:.3rem}
+.app-card p{font-size:.8rem;color:var(--text2);margin-bottom:.8rem}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>App Store</h1>
+  <p style="color:var(--text2);margin-bottom:1rem;font-size:.9rem">Instale novos apps no seu ESPortable32.</p>
+  <div id="store-list" class="avail"></div>
+  <div id="store-msg"></div>
+</div>
+<script src="/js/app.js"></script>
+<script>
+const STORE_URL = 'https://raw.githubusercontent.com/victorbillyph/ESPortable32/main/apps-store.json';
+
+async function loadStore() {
+  const list = document.getElementById('store-list');
+  try {
+    const r = await fetch(STORE_URL);
+    const data = await r.json();
+    const avail = data.apps || [];
+    if (!avail.length) {
+      list.innerHTML = '<div style="color:var(--text2);font-size:.9rem">Nenhum app disponivel no momento.</div>';
+      return;
+    }
+    list.innerHTML = avail.map(a => `
+      <div class="app-card">
+        <h3>${a.icon || '&#9733;'} ${a.name}</h3>
+        <p>${a.desc || ''}</p>
+        <button class="btn small" data-url="${a.file}" data-name="${a.name}">Instalar</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('button').forEach(btn => {
+      btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = 'Instalando...';
+        try {
+          const r = await fetch('/api/apps', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: btn.dataset.url })
+          });
+          const d = await r.json();
+          if (d.status === 'ok') {
+            btn.textContent = 'Instalado!';
+            btn.style.background = 'var(--green)';
+            msg('store-msg', btn.dataset.name + ' instalado com sucesso! Reinicie o launcher para ver o app.', 'success');
+          } else {
+            btn.textContent = 'Erro';
+            btn.disabled = false;
+            msg('store-msg', 'Erro: ' + (d.message || 'Desconhecido'), 'error');
+          }
+        } catch (e) {
+          btn.textContent = 'Instalar';
+          btn.disabled = false;
+          msg('store-msg', 'Erro: ' + e.message, 'error');
+        }
+      };
+    });
+  } catch (e) {
+    list.innerHTML = '<div style="color:var(--text2);font-size:.9rem">Erro ao carregar loja. Verifique conexao com internet.</div>';
+  }
+}
+
+loadStore();
+</script>
+</body>
+</html>
