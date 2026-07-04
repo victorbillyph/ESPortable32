@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard - ESPortable32</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.container{max-width:800px;margin:0 auto;padding:1rem}
+h1{font-size:1.3rem;margin-bottom:1.2rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem}
+.stat-item{background:var(--surface2);border-radius:8px;padding:.8rem;border:1px solid var(--border)}
+.stat-label{font-size:.75rem;color:var(--text2);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.5px}
+.stat-value{font-size:1rem;font-weight:600}
+.stat-value.green{color:#2ecc71}
+.stat-value.yellow{color:#f1c40f}
+.stat-value.red{color:#e74c3c}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="/" class="btn secondary" style="display:inline-block;margin-bottom:1rem">&larr; Voltar</a>
+  <h1>Dashboard</h1>
+  <div class="stat-grid" id="grid"></div>
+</div>
+<script src="/js/app.js"></script>
+<script>
+async function refresh() {
+  try {
+    const d = await api('/status');
+    const items = [
+      ['Estado', d.state_name || '--', ''],
+      ['IP', d.ip || '--', ''],
+      ['WiFi', d.ssid || '--', ''],
+      ['RSSI', (d.wifi_rssi || '--') + ' dBm', d.wifi_rssi < -70 ? 'red' : d.wifi_rssi < -50 ? 'yellow' : 'green'],
+      ['Heap', fmtBytes(d.free_heap), d.free_heap < 30000 ? 'red' : 'green'],
+      ['CPU', (d.cpu_freq || '--') + ' MHz', ''],
+      ['Uptime', fmtUptime(d.uptime), ''],
+      ['Bloqueado', d.locked ? 'Sim' : 'Nao', d.locked ? 'red' : 'green'],
+    ];
+    $('grid').innerHTML = items.map(([l, v, c]) =>
+      `<div class="stat-item"><div class="stat-label">${l}</div><div class="stat-value${c ? ' ' + c : ''}">${v}</div></div>`
+    ).join('');
+  } catch (e) { $('grid').innerHTML = '<div class="msg error">Erro ao carregar</div>'; }
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

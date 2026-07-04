@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESPortable32</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.launcher{max-width:800px;margin:0 auto;padding:1rem}
+.launcher h1{font-size:1.5rem;margin-bottom:.3rem}
+.launcher .sub{color:var(--text2);margin-bottom:1.5rem;font-size:.9rem}
+.section-title{font-size:.85rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin:1.5rem 0 .8rem;border-bottom:1px solid var(--border);padding-bottom:.3rem}
+.app-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem}
+.app-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;cursor:pointer;transition:all .15s;text-decoration:none;color:var(--text);display:block}
+.app-card:hover{transform:translateY(-2px);border-color:var(--primary);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.app-icon{font-size:2rem;margin-bottom:.5rem}
+.app-name{font-size:.9rem;font-weight:600;margin-bottom:.2rem}
+.app-desc{font-size:.75rem;color:var(--text2)}
+.app-card.user .app-icon{opacity:.7}
+#status-bar{display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;background:var(--surface);border-radius:8px;margin-bottom:1rem;font-size:.85rem;color:var(--text2)}
+.loading{text-align:center;padding:2rem;color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="launcher">
+  <h1>ESPortable32</h1>
+  <p class="sub" id="status-sub">Conectando...</p>
+  <div id="status-bar"><span class="status-dot" id="indicator"></span><span id="status-text">Carregando...</span></div>
+  <div id="app-sections"></div>
+</div>
+<script>
+const API = '/api';
+async function api(path) {
+  const r = await fetch(API + path);
+  return r.json();
+}
+function setStatus(dot, txt) {
+  document.getElementById('indicator').className = 'status-dot ' + dot;
+  document.getElementById('status-text').textContent = txt;
+}
+async function load() {
+  try {
+    const st = await api('/status');
+    const ip = st.ip || '--';
+    const name = st.device_name || 'ESPortable32';
+    document.getElementById('status-sub').textContent = name + (ip && ip !== '0.0.0.0' ? ' — ' + ip : '');
+    setStatus(st.state < 4 ? 'yellow' : 'green', st.state_name || 'Conectado');
+  } catch (e) {
+    setStatus('red', 'Sem conexao');
+  }
+  try {
+    const data = await api('/apps');
+    const apps = data.apps || [];
+    const system = apps.filter(a => a.type === 'system');
+    const user = apps.filter(a => a.type !== 'system');
+    const sect = document.getElementById('app-sections');
+    let html = '';
+    if (system.length) {
+      html += '<div class="section-title">Sistema</div><div class="app-grid">';
+      html += system.map(a => 
+        `<a href="/apps/${a.id}.html" class="app-card">
+          <div class="app-icon">${a.icon || '&#9733;'}</div>
+          <div class="app-name">${a.name || a.id}</div>
+          <div class="app-desc">${a.desc || ''}</div>
+        </a>`
+      ).join('');
+      html += '</div>';
+    }
+    if (user.length) {
+      html += '<div class="section-title">Apps</div><div class="app-grid">';
+      html += user.map(a => 
+        `<a href="/apps/${a.id}.html" class="app-card user">
+          <div class="app-icon">&#9733;</div>
+          <div class="app-name">${a.name || a.id}</div>
+          <div class="app-desc">${a.desc || ''}</div>
+        </a>`
+      ).join('');
+      html += '</div>';
+    }
+    if (!system.length && !user.length) {
+      html = '<div class="loading">Nenhum app encontrado</div>';
+    }
+    sect.innerHTML = html;
+  } catch (e) {
+    document.getElementById('app-sections').innerHTML = '<div class="loading">Erro ao carregar apps</div>';
+  }
+}
+document.addEventListener('DOMContentLoaded', load);
+</script>
+</body>
+</html>

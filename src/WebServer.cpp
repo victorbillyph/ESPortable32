@@ -225,6 +225,26 @@ void WebServer::handleApiStatus(AsyncWebServerRequest* request) {
     json += "\"ssid\":\"" + _config.getWifiSSID() + "\",";
     json += "\"device_name\":\"" + _config.getDeviceName() + "\",";
     json += "\"version\":\"1.0.0\"";
+
+    // Add WiFi scan results when in setup mode
+    if (_state.getState() < STATE_CONNECTED) {
+        int n = WiFi.scanComplete();
+        if (n >= 0) {
+            json += ",\"wifi_networks\":[";
+            for (int i = 0; i < n; i++) {
+                if (i > 0) json += ",";
+                json += "\"" + WiFi.SSID(i) + "\"";
+            }
+            json += "]";
+        }
+        // Start async scan if not already scanning
+        if (n == -1) {
+            WiFi.scanNetworks(true);
+        } else if (n == -2) {
+            WiFi.scanNetworks(true);
+        }
+    }
+
     json += "}";
     request->send(200, "application/json", json);
 }
@@ -395,17 +415,41 @@ void WebServer::handleApiFsDelete(AsyncWebServerRequest* request) {
 
 void WebServer::handleApiApps(AsyncWebServerRequest* request) {
     String json = "{\"apps\":[";
+
+    // Load manifest
+    String manifest;
+    if (LittleFS.exists("/apps/.manifest.json")) {
+        File mf = LittleFS.open("/apps/.manifest.json", "r");
+        if (mf) manifest = mf.readString();
+        if (mf) mf.close();
+    }
+
     File root = LittleFS.open("/apps");
     if (root && root.isDirectory()) {
         File f = root.openNextFile();
         bool first = true;
         while (f) {
             String name = String(f.name());
-            if (name.endsWith(".html")) {
+            if (name.endsWith(".html") && !name.startsWith(".")) {
                 if (!first) json += ",";
                 first = false;
                 String id = name.substring(0, name.length() - 5);
-                json += "{\"id\":\"" + id + "\",\"path\":\"" + name + "\",\"size\":" + String(f.size()) + "}";
+                json += "{\"id\":\"" + id + "\",\"path\":\"" + name + "\",\"size\":" + String(f.size());
+
+                // Check manifest for metadata
+                String key = "\"" + id + "\":";
+                int idx = manifest.indexOf(key);
+                if (idx >= 0) {
+                    int start = manifest.indexOf('{', idx + key.length());
+                    int end = manifest.indexOf('}', start);
+                    if (start > 0 && end > start) {
+                        json += "," + manifest.substring(start, end + 1);
+                    }
+                } else {
+                    json += ",\"type\":\"user\",\"name\":\"" + id + "\"";
+                }
+
+                json += "}";
             }
             f = root.openNextFile();
         }

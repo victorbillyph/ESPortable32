@@ -62,10 +62,14 @@ void loop() {
     }
 
     static unsigned long lastStatus = 0;
-    if (millis() - lastStatus > 30000) {
+    if (millis() - lastStatus > 5000) {
         lastStatus = millis();
         Serial.printf("[Heartbeat] State: %d, Heap: %u, WiFi RSSI: %d\n",
             state.getState(), ESP.getFreeHeap(), WiFi.RSSI());
+        webSockets.broadcast("{\"uptime\":" + String(millis() / 1000) +
+            ",\"free_heap\":" + String(ESP.getFreeHeap()) +
+            ",\"wifi_rssi\":" + String(WiFi.RSSI()) +
+            ",\"state\":" + String(state.getState()) + "}");
     }
 }
 

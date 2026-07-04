@@ -926,16 +926,22 @@ class ESPortableDesktop:
 
     def _on_boot_done(self):
         self.boot.destroy()
-        # Check status
         try:
-            s=self.cli.status()
-            if isinstance(s,dict):
-                mode=s.get("state_name","")
-                if mode=="SETUP" or "setup" in str(mode).lower():
+            if self.cli.mode=="serial":
+                resp=self.cli._serial_cmd("STATUS")
+                if "SETUP" in resp:
                     self._show_setup_wizard()
                     return
-        except: pass
-        # Default: go to desktop
+            else:
+                s=self.cli.status()
+                if isinstance(s,dict):
+                    mode=s.get("state_name","")
+                    if mode=="SETUP" or "setup" in str(mode).lower():
+                        self._show_setup_wizard()
+                        return
+        except Exception as e:
+            self._show_error(f"Erro ao verificar status: {e}")
+            return
         self._show_desktop()
 
     def _show_setup_wizard(self):
@@ -1029,7 +1035,28 @@ class ESPortableDesktop:
         else: self.con_status.config(text=f"Erro: {r}",fg="red"); self.ser_btn.config(state="normal",text="Conectar Serial")
 
     def _on_connect(self,status_data):
+        if self.cli.mode=="serial":
+            try:
+                resp=self.cli._serial_cmd("STATUS")
+                if "SETUP" in resp:
+                    self._show_setup_wizard()
+                    return
+            except Exception as e:
+                self._show_error(f"Erro ao verificar status serial: {e}")
+                return
+        elif isinstance(status_data,dict):
+            mode=status_data.get("state_name","")
+            if mode=="SETUP" or "setup" in str(mode).lower():
+                self._show_setup_wizard()
+                return
         self._show_desktop()
+
+    def _show_error(self,msg):
+        self._clear()
+        f=tk.Frame(self.root,bg=BLACK); f.pack(fill="both",expand=True)
+        tk.Label(f,text="ERRO",font=("System",14,"bold"),fg="red",bg=BLACK).pack(pady=(40,10))
+        tk.Label(f,text=msg,font=("System",9),fg="#ff4444",bg=BLACK,wraplength=500,justify="center").pack(pady=10)
+        tk.Button(f,text="OK",bg=BTN_FACE,relief="raised",command=self._show_connect).pack(pady=10)
 
     # ── Desktop ──────────────────────────────────────────────────
 

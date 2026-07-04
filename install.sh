@@ -5,6 +5,7 @@ REPO_URL="https://github.com/victorbillyph/ESPortable32"
 INSTALL_DIR="${HOME}/.local/share/esportable32"
 BIN_DIR="${HOME}/.local/bin"
 CMD="${BIN_DIR}/esportable32"
+VENV_DIR="${INSTALL_DIR}/.venv-tui"
 
 GREEN='\033[92m'
 CYAN='\033[96m'
@@ -34,34 +35,30 @@ else
     ok "Repositório clonado em ${INSTALL_DIR}"
 fi
 
-# 2. Python venv
-VENV_DIR="${INSTALL_DIR}/.venv"
+# 2. Python venv para TUI (Textual)
 if [ ! -d "${VENV_DIR}" ]; then
-    step "Criando virtual environment..."
+    step "Criando virtual environment para TUI..."
     python3 -m venv "${VENV_DIR}"
     ok "Virtual environment criado"
 fi
 
-step "Instalando PlatformIO + esptool..."
-"${VENV_DIR}/bin/pip" install -q platformio esptool 2>/dev/null
-ok "Dependências instaladas"
+step "Instalando dependencias (Textual, pyserial)..."
+"${VENV_DIR}/bin/pip" install -q textual pyserial requests 2>/dev/null || true
+ok "Dependencias instaladas"
 
-# 3. Instalar comando
+# 3. Instalar comando único
 mkdir -p "${BIN_DIR}"
 
-cat > "${CMD}" << 'SCRIPT'
+cat > "${CMD}" << SCRIPT
 #!/usr/bin/env bash
-PROJECT_DIR="${HOME}/.local/share/esportable32"
-VENV_PIO="${PROJECT_DIR}/.venv/bin/pio"
-VENV_PYTHON="${PROJECT_DIR}/.venv/bin/python"
+PROJECT_DIR="${INSTALL_DIR}"
+VENV_PYTHON="${VENV_DIR}/bin/python"
 
-# Se estiver dentro do diretório do projeto, usa ele
-if [ -f "./esportable32.py" ]; then
-    exec python3 ./esportable32.py "$@"
+if [ -f "./esportable32_tui.py" ]; then
+    exec python3 ./esportable32_tui.py "\$@"
 fi
 
-# Senão, usa o instalado
-exec "${VENV_PYTHON}" "${PROJECT_DIR}/esportable32.py" "$@"
+exec "\${VENV_PYTHON}" "\${PROJECT_DIR}/esportable32_tui.py" "\$@"
 SCRIPT
 
 chmod +x "${CMD}"
@@ -93,14 +90,9 @@ echo -e "  Agora é só digitar:"
 echo ""
 echo -e "    ${BOLD}esportable32${RESET}"
 echo ""
-echo -e "  Para ver o menu completo."
-echo -e "  Ou:"
-echo -e "    ${BOLD}esportable32 install${RESET}     Compilar e gravar firmware"
-echo -e "    ${BOLD}esportable32 repair${RESET}      Diagnosticar e reparar"
-echo -e "    ${BOLD}esportable32 gui${RESET}         Abrir interface gráfica"
-echo ""
-echo -e "  Configuração (WiFi, PIN) deve ser feita pela GUI/TUI:"
-echo -e "    ${BOLD}esportable32 gui${RESET}          Interface gráfica"
-echo -e "    ${BOLD}esportableui${RESET}              Interface de terminal"
-echo -e "    ${BOLD}bash install-tui.sh${RESET}       Instalar o comando acima"
+echo -e "  A ferramenta vai fazer o boot, detectar seu ESP32"
+echo -e "  e abrir o desktop. Se não encontrar, oferece:"
+echo -e "    - Instalar firmware no ESP32"
+echo -e "    - Reparar conexão"
+echo -e "    - Buscar atualizações"
 echo ""
