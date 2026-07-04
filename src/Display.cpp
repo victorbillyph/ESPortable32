@@ -6,9 +6,12 @@ Display::Display(uint8_t sda, uint8_t scl)
 
 bool Display::begin() {
     Wire.begin(_sda, _scl);
+    delay(100);
     if (!_oled.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+        Serial.println("[OLED] SSD1306 allocation FAILED");
         return false;
     }
+    Serial.println("[OLED] SSD1306 initialized OK");
     _oled.clearDisplay();
     _oled.setTextColor(SSD1306_WHITE);
     _oled.setTextSize(1);
